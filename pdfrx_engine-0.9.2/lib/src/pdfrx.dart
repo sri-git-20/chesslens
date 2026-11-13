@@ -1,0 +1,135 @@
+import 'dart:async';
+import 'dart:developer' as developer;
+import 'dart:typed_data';
+
+import 'package:http/http.dart' as http;
+import 'package:meta/meta.dart';
+
+/// Emits a [Pdfrx.debugLazyLoading] trace line.
+///
+/// Callers are expected to check the flag themselves so that building the
+/// message costs nothing when tracing is off.
+void pdfrxLazyLog(String message) => developer.log(message, name: 'pdfrx.lazy');
+
+/// Class to provide Pdfrx's configuration.
+/// The parameters should be set before calling any Pdfrx's functions.
+///
+class Pdfrx {
+  Pdfrx._();
+
+  /// Trace demand-paged loading to the console.
+  ///
+  /// When enabled, every HTTP range fetch is logged with the block it filled,
+  /// the byte range requested and how much of the file is resident so far. The
+  /// viewer additionally logs which pages it measures on demand, and when a
+  /// measurement changes the document layout.
+  ///
+  /// Intended for working out what a network document actually pulls down. Off
+  /// by default; costs nothing while disabled.
+  static bool debugLazyLoading = false;
+
+  /// Total bytes pulled over HTTP since process start, across all documents.
+  ///
+  /// Sampled around an operation to attribute its wall-clock time: a slow page
+  /// measurement that moves this counter was waiting on the network, one that
+  /// does not was waiting on the pdfium worker.
+  static int debugBytesFetched = 0;
+
+  /// Whether `PdfPage.loadText` (and so `PdfPage.loadStructuredText`) restores logical order to Hebrew text
+  /// stored in visual order. Legacy decoding additionally requires [decodeLegacyHebrewText].
+  ///
+  /// See `PdfHebrewTextNormalizer`. Off by default. Supported by the native PDFium backend.
+  static bool normalizeHebrewText = false;
+
+  /// Also decode ambiguous legacy font encodings when [normalizeHebrewText] is enabled.
+  /// This heuristic can misidentify accented Latin text; enable only for known broken Hebrew PDFs.
+  static bool decodeLegacyHebrewText = false;
+
+  /// Explicitly specify pdfium module path for special purpose.
+  ///
+  /// It is not supported on Flutter Web.
+  static String? pdfiumModulePath;
+
+  /// Overriding the default HTTP client for PDF download.
+  ///
+  /// It is not supported on Flutter Web.
+  static http.Client Function()? createHttpClient;
+
+  /// To override the default pdfium WASM modules directory URL. It must be terminated by '/'.
+  static String? pdfiumWasmModulesUrl;
+
+  /// HTTP headers to use when fetching the PDFium WASM module.
+  /// This is useful for authentication on protected servers.
+  /// Only supported on Flutter Web.
+  static Map<String, String>? pdfiumWasmHeaders;
+
+  /// Whether to include credentials (cookies) when fetching the PDFium WASM module.
+  /// This is useful for authentication on protected servers.
+  /// Only supported on Flutter Web.
+  static bool pdfiumWasmWithCredentials = false;
+
+  /// Function to load asset data.
+  ///
+  /// This function is used to load PDF files from assets.
+  /// It is used to isolate pdfrx API implementation from Flutter framework.
+  ///
+  /// For Flutter, `pdfrxFlutterInitialize` should be called explicitly or implicitly before using this class.
+  /// For Dart only, you can set this function to load assets from your own asset management system.
+  static Future<Uint8List> Function(String name)? loadAsset;
+
+  /// Path to the cache directory.
+  ///
+  /// You can override the default cache directory by setting this variable before initialization.
+  ///
+  /// For Flutter, `pdfrxFlutterInitialize` sets this to the temporary directory from `path_provider`.
+  /// For Dart only, `pdfrxInitialize` sets this to `Directory.systemTemp`. You can also set this explicitly to a
+  /// directory on your own file system.
+  static String? cacheDirectoryPath;
+
+  static Map<String, int>? pdfiumNativeBindings;
+
+  /// Runs [action] with the PDFium work it starts scheduled as background work.
+  ///
+  /// The native PDFium backend runs PDFium calls on one worker. Operations started inside [action] use lower
+  /// priority unless they specify one explicitly; this includes page renders with no explicit priority. Other
+  /// backends run [action] unchanged.
+  ///
+  /// Native page renders yield cooperatively at PDFium pause points, but individual native calls and final form
+  /// drawing may not be interruptible. Background work can wait indefinitely while higher-priority work keeps
+  /// arriving. Calls started by asynchronous work in this zone inherit its priority.
+  /// The PDFium backend protects the documents used by its own operations, including sources of `assemble()`.
+  /// Raw native handles passed to `PdfrxEntryFunctions.compute` are not tracked: await those calls before disposing
+  /// their documents, and do not retain a handle beyond `useNativeDocumentHandle`'s callback.
+  static Future<T> runAsBackgroundWork<T>(FutureOr<T> Function() action) =>
+      runZoned(() async => await action(), zoneValues: {backgroundWorkZoneKey: true});
+
+  /// The zone value set by [runAsBackgroundWork].
+  @internal
+  static const backgroundWorkZoneKey = #pdfrx.backgroundWork;
+
+  /// Serialize PDFium across Flutter engines in one OS process.
+  ///
+  /// Set this on every engine before `PdfrxEntryFunctions.init` /
+  /// `pdfrxFlutterInitialize` when using `desktop_multi_window` (or any
+  /// multi-engine host). The `pdfrx_pdfium_gate` native asset from pdfium_dart
+  /// is bundled automatically.
+  ///
+  /// Consequences: the Dart font mapper is not installed (PDFium's built-in
+  /// mapper is used), and `FPDF_DestroyLibrary` is not called when an engine
+  /// stops its worker — PDFium stays alive until process exit.
+  ///
+  /// Default is `false`. Single-engine apps are unchanged.
+  static bool get useProcessWidePdfiumGate => _useProcessWidePdfiumGate;
+  static bool _useProcessWidePdfiumGate = false;
+  static bool _gateConfigurationLocked = false;
+
+  static set useProcessWidePdfiumGate(bool value) {
+    if (_gateConfigurationLocked && value != _useProcessWidePdfiumGate) {
+      throw StateError('Configure the process-wide PDFium gate before starting any PDFium worker.');
+    }
+    _useProcessWidePdfiumGate = value;
+  }
+
+  @internal
+  static void lockProcessWidePdfiumGateConfiguration() => _gateConfigurationLocked = true;
+}

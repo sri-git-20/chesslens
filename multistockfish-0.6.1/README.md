@@ -1,0 +1,115 @@
+[![Tests](https://github.com/lichess-org/dart-multistockfish/workflows/Test/badge.svg)](https://github.com/lichess-org/dart-multistockfish/actions?query=workflow%3A%22Test%22)
+[![pub package](https://img.shields.io/pub/v/multistockfish.svg)](https://pub.dev/packages/multistockfish)
+[![package publisher](https://img.shields.io/pub/publisher/multistockfish.svg)](https://pub.dev/packages/multistockfish/publisher)
+[![Discord](https://img.shields.io/discord/280713822073913354?label=Discord&logo=discord&style=flat)](https://discord.com/channels/280713822073913354/807722604478988348)
+
+# multistockfish
+
+Multiple flavors of Stockfish Engine.
+
+This plugin provides the following Stockfish engines:
+
+* [Stockfish 19](https://stockfishchess.org), with a small embedded NNUE (~1MB)
+* [Stockfish 19](https://stockfishchess.org), without embedded NNUE
+* [Fairy-Stockfish](https://fairy-stockfish.github.io), for chess variants
+
+## Usage
+
+### Start an engine
+
+An engine is a handle you create and dispose. `Stockfish.create()` starts one
+and completes when it is ready for commands.
+
+> [!NOTE]
+> When using the `StockfishFlavor.latestNoNNUE` flavor, you need to download the `.nnue` file before
+> starting an evaluation, since it is not embedded in the binary. Stockfish 19
+> evaluates with a single net, replacing the big/small pair Stockfish 18 used.
+> `StockfishFlavor.light` embeds a ~1MB net instead, so it needs no download.
+
+```dart
+import 'package:multistockfish/multistockfish.dart';
+
+// defaults to StockfishFlavor.light
+final stockfish = await Stockfish.create();
+
+// state is a ValueListenable<StockfishState>
+print(stockfish.state.value); // StockfishState.ready
+
+// for latestNoNNUE, the NNUE file path is required
+final latest = await Stockfish.create(
+  flavor: StockfishFlavor.latestNoNNUE,
+  nnuePath: '/path/to/nn-1a298aa575a0.nnue',
+);
+```
+
+### One engine per flavor
+
+**The handle is the flavor.** At most one engine per `StockfishFlavor` can be
+live at a time: `create()` throws a `StateError` while another engine of the
+same flavor holds the slot, and `dispose()` frees it. Engines of *different*
+flavors are independent and can run side by side, each with its own `stdin`,
+`stdout`, `state` and `diagnostics`.
+
+```dart
+// An NNUE engine for analysis and a Fairy-Stockfish opponent, at the same time.
+final analysis = await Stockfish.create(flavor: StockfishFlavor.light);
+final opponent = await Stockfish.create(
+  flavor: StockfishFlavor.variant,
+  variant: 'crazyhouse',
+);
+
+// Refused: light is taken until `analysis` is disposed.
+await Stockfish.create(flavor: StockfishFlavor.light); // throws StateError
+```
+
+An engine that ends releases its flavor's slot without waiting to be disposed,
+so a replacement can be created straight away. `dispose()` is still what you
+call to stop one that is still running.
+
+### UCI command
+
+```dart
+stockfish.stdin = 'isready';
+stockfish.stdin = 'go movetime 3000';
+stockfish.stdin = 'go infinite';
+stockfish.stdin = 'stop';
+```
+
+Engine output is directed to a `Stream<String>`, add a listener to process results.
+
+```dart
+stockfish.stdout.listen((line) {
+  // do something useful
+  print(line);
+});
+```
+
+`create()` only completes once the engine is ready, so a listener attached to
+`stdout` afterwards has already missed the banner and the UCI handshake. Pass
+`onStdout` to see those too — it is attached before the engine is spawned and
+receives every line for the engine's whole life.
+
+```dart
+final stockfish = await Stockfish.create(onStdout: console.add);
+```
+
+### Quit / Hot reload
+
+There are two active isolates per running Stockfish engine. That interferes
+with Flutter's hot reload feature so you need to dispose your engines before
+attempting to reload.
+
+`dispose()` sends the UCI `quit` command, waits for the engine to exit and frees
+its flavor's slot. An engine that will not exit is given up on rather than
+waited for forever.
+
+```dart
+await stockfish.dispose();
+
+// the stdout stream is closed, and the handle stays dead
+print(stockfish.state.value); // StockfishState.disposed
+```
+
+Sending `quit` over `stdin` works too: the engine exits cleanly and the handle
+ends as `disposed` just the same. Only an engine that died badly ends as
+`StockfishState.error`.

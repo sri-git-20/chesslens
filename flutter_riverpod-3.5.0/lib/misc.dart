@@ -1,0 +1,31 @@
+export 'src/internals.dart'
+    show
+        debugTrackProviderCreation,
+        debugTrackProviderHistory,
+        ProviderListenableOrFamily,
+        ProviderOrFamily,
+        AsyncNotifierProviderFamily,
+        FutureProviderFamily,
+        NotifierProviderFamily,
+        ProviderFamily,
+        StreamNotifierProviderFamily,
+        StreamProviderFamily,
+        Refreshable,
+        Family,
+        ProviderListenable,
+        Override,
+        ProviderBase,
+        ProviderDisposedException,
+        KeepAliveLink,
+        ProviderException,
+        ProviderTransformerContext,
+        ProviderTransformer,
+        SyncProviderTransformerMixin,
+        AsyncProviderListenable,
+        CustomProviderListenable,
+        ProviderTransformer2,
+        SyncProviderTransformer2,
+        WhenComplete;
+
+@Deprecated('Import misc.dart instead')
+export 'src/internals.dart' show ChangeNotifierProviderFamily;
