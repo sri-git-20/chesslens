@@ -26,7 +26,8 @@ def _init():
 
 
 def _make(a):
-    return synth.make_sample(*a)
+    seed, cat, hold = a
+    return synth.make_sample(seed, LIB, cat, hold)
 
 
 def bucket(px):
