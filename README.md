@@ -19,7 +19,8 @@ real board you can analyze, play out or solve with Stockfish, fully offline.
 
 Every push to `main` builds an APK. On your Android phone, open the
 [latest development build](https://github.com/sri-git-20/chesslens/releases/tag/dev-latest),
-download `chesslens-dev.apk` and open it. Android will ask you to allow
+download `chesslens-dev.apk` and open it (`chesslens-dev-32bit.apk` is for old
+32-bit phones only). Android will ask you to allow
 installs from your browser or file manager the first time.
 
 Development builds are signed with a public test key (`ci/dev-debug.keystore`)

@@ -84,14 +84,14 @@ jobs:
 
       - name: Build release APK
         run: |
-          flutter build apk --release \
+          flutter build apk --release --split-per-abi \
             --build-number=${{ github.run_number }} \
             --dart-define=BUILD_NUMBER=${{ github.run_number }}
 
       - uses: actions/upload-artifact@v6
         with:
           name: chesslens-apk
-          path: app/build/app/outputs/flutter-apk/app-release.apk
+          path: app/build/app/outputs/flutter-apk/app-*-release.apk
           retention-days: 14
 
       - name: Publish development build
@@ -99,10 +99,11 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          cp build/app/outputs/flutter-apk/app-release.apk chesslens-dev.apk
+          cp build/app/outputs/flutter-apk/app-arm64-v8a-release.apk chesslens-dev.apk
+          cp build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk chesslens-dev-32bit.apk
           gh release delete dev-latest --yes --cleanup-tag || true
-          gh release create dev-latest chesslens-dev.apk \
+          gh release create dev-latest chesslens-dev.apk chesslens-dev-32bit.apk \
             --prerelease \
             --target "$GITHUB_SHA" \
             --title "Latest development build" \
-            --notes "Built from commit ${GITHUB_SHA::7}, run ${{ github.run_number }}. On your Android phone, download chesslens-dev.apk and open it to install."
+            --notes "Built from commit ${GITHUB_SHA::7}, run ${{ github.run_number }}. On your Android phone, download chesslens-dev.apk and open it to install. Use chesslens-dev-32bit.apk only on old phones where the main file will not install."
