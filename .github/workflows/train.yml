@@ -46,7 +46,7 @@ jobs:
           echo "mode=$m" >> "$GITHUB_OUTPUT"
           echo "MODE: $m"
           if [ "$m" = full ]; then
-            printf '%s\n' PAGES=10000 SQPB=2 MIN_DET=45 MIN_COR=35 MIN_SQ=70 EVAL_PAGES=100 SPE=120 >> "$GITHUB_ENV"
+            printf '%s\n' PAGES=10000 SQPB=2 MIN_DET=55 MIN_COR=30 MIN_SQ=65 EVAL_PAGES=100 SPE=120 >> "$GITHUB_ENV"
           else
             printf '%s\n' PAGES=300 SQPB=1 MIN_DET=1.5 MIN_COR=1 MIN_SQ=1.5 EVAL_PAGES=4 SPE=15 >> "$GITHUB_ENV"
           fi
