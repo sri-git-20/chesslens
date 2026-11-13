@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../app_info.dart';
@@ -60,18 +59,6 @@ class SettingsScreen extends ConsumerWidget {
           const ListTile(
             title: Text('Version'),
             subtitle: Text('$appVersion (build $buildNumber)'),
-          ),
-          ListTile(
-            title: const Text('Source code'),
-            subtitle: const Text(sourceUrl),
-            trailing: const Icon(Icons.copy_outlined),
-            onTap: () async {
-              await Clipboard.setData(const ClipboardData(text: sourceUrl));
-              if (!context.mounted) return;
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Link copied')),
-              );
-            },
           ),
           ListTile(
             title: const Text('Licences'),

@@ -2,7 +2,8 @@ name: Android build
 
 on:
   push:
-    branches: [main]
+    branches: ['**']
+    tags-ignore: ['**']
   pull_request:
   workflow_dispatch:
 
@@ -87,7 +88,7 @@ jobs:
             --build-number=${{ github.run_number }} \
             --dart-define=BUILD_NUMBER=${{ github.run_number }}
 
-      - uses: actions/upload-artifact@v5
+      - uses: actions/upload-artifact@v6
         with:
           name: chesslens-apk
           path: app/build/app/outputs/flutter-apk/app-release.apk

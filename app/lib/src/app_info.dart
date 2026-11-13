@@ -16,5 +16,4 @@ const String bugReportEmail = 'proxify1@gmail.com';
 
 const String legalese =
     'Copyright (C) 2026 ChessLens contributors.\n'
-    'ChessLens is free software under the GNU General Public License v3. '
-    'Source code: $sourceUrl';
+    'ChessLens is free software under the GNU General Public License v3.';
