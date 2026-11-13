@@ -205,6 +205,89 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
           ),
         ],
       ),
+      bottomNavigationBar: ListenableBuilder(
+        listenable: _model,
+        builder: (context, _) {
+          final fen = _model.fullFen;
+          final legal = fen != null;
+          final theme = Theme.of(context);
+          return Material(
+            color: theme.colorScheme.surfaceContainer,
+            child: SafeArea(
+              top: false,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    if (!legal)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 6),
+                        child: Text(
+                          'Fix the position above to analyze, play or solve.',
+                          textAlign: TextAlign.center,
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: FilledButton.icon(
+                            icon: const Icon(Icons.analytics_outlined),
+                            label: const Text('Analyze'),
+                            onPressed: fen == null
+                                ? null
+                                : () => _open(AnalysisScreen(
+                                      fen: fen,
+                                      orientation: _model.orientation,
+                                    )),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: FilledButton.icon(
+                            icon: const Icon(Icons.smart_toy_outlined),
+                            label: const Text('Play'),
+                            onPressed: fen == null
+                                ? null
+                                : () => _open(PlayScreen(
+                                      fen: fen,
+                                      orientation: _model.orientation,
+                                    )),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: FilledButton.icon(
+                            icon: const Icon(Icons.extension_outlined),
+                            label: const Text('Solve'),
+                            onPressed: fen == null
+                                ? null
+                                : () => _open(SolveScreen(
+                                      fen: fen,
+                                      orientation: _model.orientation,
+                                      puzzleId: widget.args.puzzleId,
+                                    )),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    OutlinedButton.icon(
+                      icon: const Icon(Icons.bookmark_add_outlined),
+                      label: Text(editing ? 'Save changes' : 'Save to collection'),
+                      onPressed: legal && !_saving ? _save : null,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        },
+      ),
       body: SafeArea(
         child: ListenableBuilder(
           listenable: _model,
@@ -289,56 +372,6 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
                 ),
                 const SizedBox(height: 16),
                 _LegalityMessages(problems: _model.report.problems, legal: legal),
-                const SizedBox(height: 16),
-                Row(
-                  children: [
-                    Expanded(
-                      child: FilledButton.icon(
-                        icon: const Icon(Icons.analytics_outlined),
-                        label: const Text('Analyze'),
-                        onPressed: fen == null
-                            ? null
-                            : () => _open(AnalysisScreen(
-                                  fen: fen,
-                                  orientation: _model.orientation,
-                                )),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: FilledButton.icon(
-                        icon: const Icon(Icons.smart_toy_outlined),
-                        label: const Text('Play'),
-                        onPressed: fen == null
-                            ? null
-                            : () => _open(PlayScreen(
-                                  fen: fen,
-                                  orientation: _model.orientation,
-                                )),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: FilledButton.icon(
-                        icon: const Icon(Icons.extension_outlined),
-                        label: const Text('Solve'),
-                        onPressed: fen == null
-                            ? null
-                            : () => _open(SolveScreen(
-                                  fen: fen,
-                                  orientation: _model.orientation,
-                                  puzzleId: widget.args.puzzleId,
-                                )),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                OutlinedButton.icon(
-                  icon: const Icon(Icons.bookmark_add_outlined),
-                  label: Text(editing ? 'Save changes' : 'Save to collection'),
-                  onPressed: legal && !_saving ? _save : null,
-                ),
               ],
             );
           },

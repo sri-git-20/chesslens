@@ -172,3 +172,29 @@ class ReviewModel extends ChangeNotifier {
     _recheck();
   }
 }
+
+/// A scanned position that can open straight on the analysis board: every
+/// square was read confidently and the position is legal with one of the two
+/// sides to move (the side in [args] is tried first). Returns the full FEN and
+/// the review arguments with that side to move, or null when the user should
+/// check the position in Review first.
+({String fen, ReviewArgs args})? confidentScanPosition(ReviewArgs args) {
+  final confidence = args.confidence;
+  if (confidence == null || confidence.length != 64) return null;
+  if (confidence.any((value) => value < lowConfidenceThreshold)) return null;
+  for (final side in [args.sideToMove, args.sideToMove.opposite]) {
+    final candidate = ReviewArgs(
+      boardFen: args.boardFen,
+      confidence: args.confidence,
+      sideToMove: side,
+      orientation: args.orientation,
+      sourceCrop: args.sourceCrop,
+      puzzleId: args.puzzleId,
+    );
+    final (model, error) = ReviewModel.fromArgs(candidate);
+    final fen = model.fullFen;
+    model.dispose();
+    if (error == null && fen != null) return (fen: fen, args: candidate);
+  }
+  return null;
+}

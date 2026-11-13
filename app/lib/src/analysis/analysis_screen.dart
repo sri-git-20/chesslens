@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../board/game_board.dart';
+import '../board/review_args.dart';
+import '../board/review_screen.dart';
 import '../chess/board_utils.dart';
 import '../export/export_menu.dart';
 import '../export/pgn.dart';
@@ -18,11 +20,20 @@ import 'move_list.dart';
 /// Analyze a position: move pieces on the board, see the engine's lines, and
 /// walk back and forth through the moves played.
 class AnalysisScreen extends ConsumerStatefulWidget {
-  const AnalysisScreen({super.key, required this.fen, this.orientation = Side.white});
+  const AnalysisScreen({
+    super.key,
+    required this.fen,
+    this.orientation = Side.white,
+    this.editArgs,
+  });
 
   /// A legal full FEN. Review only opens this screen for legal positions.
   final String fen;
   final Side orientation;
+
+  /// Set when the position comes straight from a scan: shows Edit position,
+  /// which replaces this screen with Review for these arguments.
+  final ReviewArgs? editArgs;
 
   @override
   ConsumerState<AnalysisScreen> createState() => _AnalysisScreenState();
@@ -111,6 +122,14 @@ class _AnalysisScreenState extends ConsumerState<AnalysisScreen>
     };
   }
 
+  void _editPosition() {
+    final args = widget.editArgs;
+    if (args == null) return;
+    Navigator.of(context).pushReplacement<void, void>(
+      MaterialPageRoute(builder: (_) => ReviewScreen(args: args)),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     ref.listen<AppSettings>(settingsProvider, (previous, next) {
@@ -125,6 +144,12 @@ class _AnalysisScreenState extends ConsumerState<AnalysisScreen>
           appBar: AppBar(
             title: const Text('Analysis'),
             actions: [
+              if (widget.editArgs != null)
+                IconButton(
+                  tooltip: 'Edit position',
+                  icon: const Icon(Icons.edit_outlined),
+                  onPressed: _editPosition,
+                ),
               ExportMenuButton(
                 fen: () => controller.position.fen,
                 pgn: () => pgnFromTree(controller.tree),
@@ -147,6 +172,11 @@ class _AnalysisScreenState extends ConsumerState<AnalysisScreen>
           body: SafeArea(
             child: Column(
               children: [
+                if (widget.editArgs != null)
+                  _ScannedNote(
+                    sideToMove: widget.editArgs!.sideToMove,
+                    onEdit: _editPosition,
+                  ),
                 Padding(
                   padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
                   child: EvalBar(
@@ -168,7 +198,14 @@ class _AnalysisScreenState extends ConsumerState<AnalysisScreen>
                   child: ListView(
                     padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
                     children: [
-                      EngineLines(controller: controller, onRetry: controller.retry),
+                      SwitchListTile(
+                        contentPadding: EdgeInsets.zero,
+                        title: const Text('Engine lines'),
+                        value: controller.engineOn,
+                        onChanged: controller.setEngineOn,
+                      ),
+                      if (controller.engineOn)
+                        EngineLines(controller: controller, onRetry: controller.retry),
                       const Divider(height: 24),
                       MoveList(tree: controller.tree, onSelect: controller.goTo),
                     ],
@@ -215,6 +252,42 @@ class _NavigationBar extends StatelessWidget {
           onPressed: tree.canGoForward ? controller.goToEnd : null,
         ),
       ],
+    );
+  }
+}
+
+/// One line above the board when the position was read from a photo.
+class _ScannedNote extends StatelessWidget {
+  const _ScannedNote({required this.sideToMove, required this.onEdit});
+
+  final Side sideToMove;
+  final VoidCallback onEdit;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 0, 8, 4),
+      child: Row(
+        children: [
+          Icon(
+            Icons.photo_camera_outlined,
+            size: 18,
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              'Read from your photo. '
+              '${sideToMove == Side.white ? 'White' : 'Black'} to move.',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ),
+          TextButton(onPressed: onEdit, child: const Text('Edit position')),
+        ],
+      ),
     );
   }
 }

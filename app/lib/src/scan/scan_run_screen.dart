@@ -4,7 +4,9 @@ import 'package:dartchess/dartchess.dart' show Side;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../analysis/analysis_screen.dart';
 import '../board/review_args.dart';
+import '../board/review_model.dart';
 import '../board/review_screen.dart';
 import 'geometry.dart';
 import 'recognition_service.dart';
@@ -94,8 +96,19 @@ class _ScanRunScreenState extends ConsumerState<ScanRunScreen> {
     final navigator = Navigator.of(context);
     if (session.boards.length == 1) {
       final args = reviewArgsFor(session.boards.single);
+      // Every square read confidently and the position is legal: go straight
+      // to the analysis board, with Edit position one tap away.
+      final ready = confidentScanPosition(args);
       navigator.pushReplacement<void, void>(
-        MaterialPageRoute(builder: (_) => ReviewScreen(args: args)),
+        MaterialPageRoute(
+          builder: (_) => ready == null
+              ? ReviewScreen(args: args)
+              : AnalysisScreen(
+                  fen: ready.fen,
+                  orientation: ready.args.orientation,
+                  editArgs: ready.args,
+                ),
+        ),
       );
       return;
     }
