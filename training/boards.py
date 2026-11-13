@@ -98,7 +98,7 @@ def sample_screen_style(rng, lib, holdout):
 # --------------------------------------------------------------------------
 # helpers
 # --------------------------------------------------------------------------
-def _blend_piece(canvas, piece, px, py, gray, halo):
+def _blend_piece(canvas, piece, px, py, gray, halo, sil=None):
     """Alpha-blend an RGBA uint8 piece into a float32 canvas at (px, py)."""
     ph, pw = piece.shape[:2]
     x0, y0 = max(px, 0), max(py, 0)
@@ -114,7 +114,8 @@ def _blend_piece(canvas, piece, px, py, gray, halo):
     roi = canvas[y0:y1, x0:x1]
     if halo > 0:  # white halo around the piece, as printed on hatched squares
         k = max(1, int(round(pw / 16)))
-        ha = cv2.dilate(a[..., 0], cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (2 * k + 1, 2 * k + 1)))
+        sa = a[..., 0] if sil is None else sil[y0 - py:y1 - py, x0 - px:x1 - px].astype(np.float32) / 255.0
+        ha = cv2.dilate(sa, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (2 * k + 1, 2 * k + 1)))
         ha = cv2.GaussianBlur(ha, (0, 0), 0.6)[..., None] * halo
         roi[:] = roi * (1 - ha) + 255.0 * ha
     roi[:] = roi * (1 - a) + rgb * a
@@ -135,10 +136,20 @@ def _draw_pieces(canvas, x0, y0, sq, labels, style, rng, scale, gray, halo, holl
             s = int(round(sq * scale * rng.uniform(0.97, 1.03)))
             s = max(4, s)
             piece = cv2.resize(imgs[cls - 1], (s, s), interpolation=cv2.INTER_AREA)
+            sil_src = ps.sil[cls - 1] if ps.sil is not None else ps.imgs[cls - 1][..., 3]
+            sil = cv2.resize(sil_src, (s, s), interpolation=cv2.INTER_AREA)
+            if rng.random() < 0.7 and s >= 12:   # small affine jitter: rotation, aspect, scale
+                ang = np.deg2rad(rng.uniform(-4, 4))
+                ax, ay = rng.uniform(0.92, 1.08), rng.uniform(0.92, 1.08)
+                A = np.array([[np.cos(ang), -np.sin(ang)], [np.sin(ang), np.cos(ang)]]) @ np.diag([ax, ay])
+                ctr = np.array([s / 2.0, s / 2.0])
+                M = np.hstack([A, (ctr - A @ ctr)[:, None]]).astype(np.float32)
+                piece = cv2.warpAffine(piece, M, (s, s), flags=cv2.INTER_LINEAR, borderValue=0)
+                sil = cv2.warpAffine(sil, M, (s, s), flags=cv2.INTER_LINEAR, borderValue=0)
             dx, dy = rng.uniform(-0.03, 0.03) * sq, rng.uniform(-0.02, 0.03) * sq
             px = int(round(x0 + c * sq + (sq - s) / 2 + dx))
             py = int(round(y0 + r * sq + (sq - s) / 2 + dy))
-            _blend_piece(canvas, piece, px, py, gray, halo)
+            _blend_piece(canvas, piece, px, py, gray, halo, sil)
     return used_hollow
 
 

@@ -68,13 +68,14 @@ def build_corners(batch=None):
 
 
 def build_squares(batch=None):
+    """v2: more depth at 32x32 / 16x16 / 8x8 where the piece shapes are resolved
+    (about 1.0M parameters, ~2 MB as float16)."""
     inp = keras.Input(batch_shape=(batch, 256, 256, 1), name="image")
-    x = cbr(inp, 16, s=2)                    # 128
-    x = cbr(x, 32, s=2); x = cbr(x, 32)      # 64
-    x = cbr(x, 64, s=2); x = cbr(x, 64)      # 32
-    x = cbr(x, 96, s=2); x = cbr(x, 96)      # 16
-    x = cbr(x, 128, s=2); x = cbr(x, 128)    # 8
-    x = cbr(x, 160); x = cbr(x, 160)
+    x = cbr(inp, 24, s=2)                                   # 128
+    x = cbr(x, 40, s=2); x = cbr(x, 40)                     # 64
+    x = cbr(x, 64, s=2); x = cbr(x, 64); x = cbr(x, 64)     # 32
+    x = cbr(x, 112, s=2); x = cbr(x, 112); x = cbr(x, 112)  # 16
+    x = cbr(x, 176, s=2); x = cbr(x, 176); x = cbr(x, 176)  # 8
     out = layers.Conv2D(13, 1, padding="same", activation="softmax", name="squares_out")(x)
     return keras.Model(inp, out, name="squares")
 

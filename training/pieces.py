@@ -47,6 +47,7 @@ class PieceStyle:
         self.imgs = imgs          # 12 x RGBA uint8
         self.holdout = holdout
         self.hollow = hollow      # optional 12 images, white pieces see-through
+        self.sil = None           # optional 12 uint8 silhouettes (used for the halo)
 
 
 class PieceLibrary:
@@ -195,8 +196,12 @@ def build_glyph_styles(path, holdout=False):
         filled.append(rgba(255.0 * (1 - outline), a))
     blacks = [rgba(np.zeros((PIECE_PX, PIECE_PX), np.float32), fit(mf[p])) for p in _ORDER]
     base = os.path.splitext(os.path.basename(path))[0]
-    return [PieceStyle(f"glyph:{base}:hollow", "glyph", hollow + blacks, holdout),
-            PieceStyle(f"glyph:{base}:filled", "glyph", filled + blacks, holdout)]
+    sil = [f[..., 3] for f in filled] + [b[..., 3] for b in blacks]
+    out = [PieceStyle(f"glyph:{base}:hollow", "glyph", hollow + blacks, holdout),
+           PieceStyle(f"glyph:{base}:filled", "glyph", filled + blacks, holdout)]
+    for st in out:
+        st.sil = sil
+    return out
 
 
 # --------------------------------------------------------------------------

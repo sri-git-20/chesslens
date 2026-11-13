@@ -24,7 +24,7 @@ on:
         default: '40'
       pages:
         description: retrain only, number of synthetic pages
-        default: '10000'
+        default: '30000'
 
 concurrency:
   group: train-m2
@@ -62,18 +62,19 @@ jobs:
           elif [[ "$MSG" == *"[full]"* ]]; then m=full
           else m=smoke; fi
           models="detector,corners,squares"; pages=10000
-          if [ "$m" = retrain ]; then models="${IN_MODELS:-squares}"; pages="${IN_PAGES:-10000}"; fi
+          if [ "$m" = retrain ]; then models="${IN_MODELS:-squares}"; pages="${IN_PAGES:-30000}"; fi
           msq="${IN_SQ:-240}"; mdet="${IN_DET:-40}"
           echo "mode=$m" >> "$GITHUB_OUTPUT"
           echo "MODE: $m models: $models"
           if [ "$m" = full ]; then
-            printf '%s\n' PAGES=10000 SQPB=2 MIN_DET=55 MIN_COR=30 MIN_SQ=65 EVAL_PAGES=100 SPE=120 >> "$GITHUB_ENV"
+            printf '%s\n' PAGES=10000 SQPB=2 MIN_DET=55 MIN_COR=30 MIN_SQ=65 EVAL_PAGES=100 SPE=120 ANALYZE_PAGES=300 >> "$GITHUB_ENV"
           elif [ "$m" = retrain ]; then
-            printf '%s\n' PAGES=$pages SQPB=2 MIN_DET=$mdet MIN_COR=30 MIN_SQ=$msq EVAL_PAGES=100 SPE=120 >> "$GITHUB_ENV"
+            printf '%s\n' PAGES=$pages SQPB=2 MIN_DET=$mdet MIN_COR=30 MIN_SQ=$msq EVAL_PAGES=100 SPE=120 ANALYZE_PAGES=300 >> "$GITHUB_ENV"
           else
             printf '%s\n' PAGES=300 SQPB=1 MIN_DET=1.5 MIN_COR=1 MIN_SQ=1.5 EVAL_PAGES=4 SPE=15 ANALYZE_PAGES=60 >> "$GITHUB_ENV"
           fi
           printf '%s\n' MODE=$m TRAIN_MODELS=$models >> "$GITHUB_ENV"
+          if [ "$models" = squares ]; then echo GEN_FLAGS=--only-squares >> "$GITHUB_ENV"; else echo GEN_FLAGS= >> "$GITHUB_ENV"; fi
           if [ "$m" = analyze ]; then echo ANALYZE_PAGES=600 >> "$GITHUB_ENV"; fi
 
       - name: Free disk space
@@ -110,7 +111,7 @@ jobs:
 
       - name: Generate synthetic data
         if: env.MODE != 'analyze'
-        run: ./timeit.sh generate_data python gen_data.py --out work/data --pages $PAGES --sq-per-board $SQPB
+        run: ./timeit.sh generate_data python gen_data.py --out work/data --pages $PAGES --sq-per-board $SQPB $GEN_FLAGS
 
       - name: Train detector
         if: env.MODE != 'analyze' && contains(env.TRAIN_MODELS, 'detector')
@@ -131,6 +132,10 @@ jobs:
       - name: Evaluate
         if: env.MODE != 'analyze'
         run: ./timeit.sh evaluate python evaluate.py --models ../app/assets/models --pages $EVAL_PAGES --out work/metrics.json
+
+      - name: Error analysis (squares)
+        if: env.MODE != 'analyze'
+        run: python analyze_squares.py --models ../app/assets/models --pages $ANALYZE_PAGES
 
       - name: Fixtures
         if: env.MODE != 'analyze'
@@ -162,6 +167,7 @@ jobs:
         if: (steps.mode.outputs.mode == 'full' || steps.mode.outputs.mode == 'retrain') && github.ref == 'refs/heads/m2-training'
         working-directory: .
         run: |
+          if [ "$PAGES" -lt 2000 ]; then echo "tiny test run, not committing"; exit 0; fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -f app/assets/models app/test/fixtures/scan training/REPORT.md training/train_info.json training/export_info.json

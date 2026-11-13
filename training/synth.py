@@ -24,9 +24,15 @@ def pick_category(rng):
     return str(rng.choice(["clean", "photo", "screenshot", "negative"], p=[.25, .45, .25, .05]))
 
 
-def make_sample(seed, lib, category=None, holdout=False):
+def make_sample(seed, lib, category=None, holdout=False, mix="all"):
+    """mix="squares": more single-diagram crops (cheap, one board each) for squares-only data."""
     rng = np.random.default_rng(seed)
-    cat = category or pick_category(rng)
+    crop_p = 0.3
+    if mix == "squares":
+        crop_p = 0.6
+        cat = category or str(rng.choice(["clean", "photo", "screenshot"], p=[.25, .55, .2]))
+    else:
+        cat = category or pick_category(rng)
     negative = cat == "negative"
     if negative:
         cat = "clean" if rng.random() < 0.5 else "photo"
@@ -36,7 +42,7 @@ def make_sample(seed, lib, category=None, holdout=False):
     else:
         if negative:
             page = pages.make_book_page(rng, lib, holdout, text_only=True)
-        elif rng.random() < 0.3:
+        elif rng.random() < crop_p:
             page = pages.make_book_crop(rng, lib, holdout)
         else:
             page = pages.make_book_page(rng, lib, holdout)
@@ -103,10 +109,19 @@ def jitter_fine(rng, quad):
     return quad + rng.normal(0, sg * size / 256.0, (4, 2))
 
 
-def to_training(seed, sample, sq_per_board=2):
+def to_training(seed, sample, sq_per_board=2, squares_only=False):
     """Returns dict of arrays for the detector, corners and squares sets."""
     rng = np.random.default_rng(seed + 7919)
     gray = rp.to_gray_u8(sample.img)
+    if squares_only:
+        sx, sy = [], []
+        for b in sample.boards:
+            if board_size(b["quad"]) < 40:
+                continue
+            for _ in range(sq_per_board):
+                sx.append(rp.warp_board(gray, jitter_fine(rng, b["quad"])))
+                sy.append(b["labels"].astype(np.uint8))
+        return dict(sq_x=sx, sq_y=sy)
     lb, s = rp.letterbox(gray)
     quads = np.zeros((MAX_BOARDS, 4, 2), np.float32)
     n = 0

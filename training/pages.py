@@ -122,7 +122,7 @@ def apply_paper(rng, arr):
 
 # --------------------------------------------------------------------------
 def make_book_page(rng, lib, holdout, n_diag=None, text_only=False):
-    W = int(rng.uniform(560, 1000))
+    W = int(rng.uniform(800, 1700))
     H = int(W * rng.uniform(1.25, 1.5))
     page = Image.new("RGB", (W, H), (255, 255, 255))
     d = ImageDraw.Draw(page)
@@ -130,7 +130,7 @@ def make_book_page(rng, lib, holdout, n_diag=None, text_only=False):
     top = int(H * rng.uniform(0.05, 0.1))
     bot = H - int(H * rng.uniform(0.05, 0.1))
     ncols = int(rng.choice([1, 2, 3], p=[.45, .35, .2]))
-    fs = int(np.clip(W / rng.uniform(36, 58), 11, 24))
+    fs = int(np.clip(W / rng.uniform(36, 58), 11, 44))
     tpath = fonts.pick(rng, "serif" if rng.random() < 0.7 else "sans")
     tfont = fonts.load(tpath, fs)
     capfont = fonts.load(fonts.pick(rng, "sans" if rng.random() < 0.5 else "serif"), max(9, int(fs * 0.85)))
@@ -203,7 +203,7 @@ def make_book_page(rng, lib, holdout, n_diag=None, text_only=False):
 def make_book_crop(rng, lib, holdout):
     """One diagram, tightly cropped (possibly with caption or nearby text)."""
     style = B.sample_book_style(rng, lib, holdout)
-    sq = int(rng.uniform(14, 70))
+    sq = int(np.exp(rng.uniform(np.log(14), np.log(90))))
     r = B.render_book_board(rng, random_position(rng), style, sq, bool(rng.random() < 0.25))
     S = r.img.shape[0]
     m = int(S * rng.uniform(0, 0.12))

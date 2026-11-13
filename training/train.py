@@ -36,6 +36,13 @@ def det_loss(yt, yp):
     return focal + 0.1 * l1
 
 
+def sq_loss(yt, yp):
+    """Per-square cross-entropy, occupied squares weighted x2 (empties dominate)."""
+    ce = keras.losses.sparse_categorical_crossentropy(yt, yp)
+    w = 1.0 + tf.cast(yt > 0, tf.float32)
+    return tf.reduce_mean(ce * w, axis=[1, 2])
+
+
 def cor_loss(yt, yp):
     p = tf.clip_by_value(yp, 1e-5, 1 - 1e-5)
     bce = -(yt * tf.math.log(p) + (1 - yt) * tf.math.log(1 - p))
@@ -151,7 +158,7 @@ def main():
     elif args.model == "corners":
         model.compile(opt, loss=cor_loss)
     else:
-        model.compile(opt, loss=keras.losses.SparseCategoricalCrossentropy(),
+        model.compile(opt, loss=sq_loss,
                       metrics=[keras.metrics.SparseCategoricalAccuracy(name="acc")])
     tr, ntr = make_ds(args.model, args.data, "train", args.batch, True)
     va, nva = make_ds(args.model, args.data, "val", args.batch, False)

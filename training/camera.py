@@ -67,7 +67,7 @@ def photo(rng, img, quads, severity):
     """Phone-photo simulation. severity 0..1; 0 gives a (nearly) clean scan."""
     s = float(severity)
     quads = [q.copy() for q in quads]
-    scale = min(rng.uniform(600, 1600) / max(img.shape[:2]), 1.8) if s > 0 else rng.uniform(0.6, 1.4)
+    scale = min(rng.uniform(900, 2600) / max(img.shape[:2]), 1.3) if s > 0 else rng.uniform(0.7, 1.2)
     img, f = _resize(img, scale)
     quads = [q * f for q in quads]
     h, w = img.shape[:2]
