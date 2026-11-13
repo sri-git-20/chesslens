@@ -22,7 +22,9 @@ EXPECTED = {"detector": ((1, 384, 384, 1), (1, 96, 96, 9)),
             "squares": ((1, 256, 256, 1), (1, 8, 8, 13))}
 DATA_FILE = {"detector": "det_x.npy", "corners": "cor_x.npy", "squares": "sq_x.npy"}
 # max abs difference allowed between Keras (fp32) and TFLite (fp16 weights)
-TOL = {"detector": 0.02, "corners": 0.03, "squares": 0.03}
+# (absolute, relative to max |output|); fp16 weights give ~1e-3 on trained nets,
+# untrained smoke-run nets have larger activations hence the relative part.
+TOL = {"detector": (0.01, 0.02), "corners": (0.02, 0.01), "squares": (0.02, 0.01)}
 
 
 def convert(model, fp16):
@@ -76,7 +78,7 @@ def main():
         # numerical check on real samples (tail of the training data) + a blank page
         x = np.load(os.path.join(args.data, DATA_FILE[name]), mmap_mode="r")
         samples = [np.asarray(x[-k]) for k in range(1, 9)] + [np.full(x.shape[1:], 255, np.uint8)]
-        worst, agree = 0.0, []
+        worst, agree, scale = 0.0, [], 0.0
         for s in samples:
             inp = (s.astype(np.float32) / 255.0)[None, :, :, None]
             ref = km.predict(inp, verbose=0)
@@ -84,12 +86,15 @@ def main():
             it.invoke()
             got = it.get_tensor(o["index"])
             worst = max(worst, float(np.abs(ref - got).max()))
+            scale = max(scale, float(np.abs(ref).max()))
             if name == "squares":
                 agree.append(float((ref.argmax(-1) == got.argmax(-1)).mean()))
         print(f"  size {size / 1e6:.2f} MB  max|keras-tflite| = {worst:.5f}  "
               f"in {[int(v) for v in i['shape']]} {i['dtype'].__name__} out {[int(v) for v in o['shape']]} {o['dtype'].__name__}", flush=True)
-        if worst > TOL[name]:
-            print(f"  FAIL numeric difference above {TOL[name]}")
+        tol = TOL[name][0] + TOL[name][1] * scale
+        print(f"  tolerance {tol:.4f} (max |output| {scale:.3f})")
+        if worst > tol:
+            print(f"  FAIL numeric difference above {tol:.4f}")
             ok = False
         if agree and min(agree) < 0.97:
             print(f"  FAIL argmax agreement {min(agree):.3f}")
