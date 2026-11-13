@@ -38,8 +38,8 @@
   "ok": true
  },
  "squares": {
-  "bytes": 1776012,
-  "max_abs_diff": 0.0035,
+  "bytes": 2307488,
+  "max_abs_diff": 0.003300786018371582,
   "input": [
    1,
    256,

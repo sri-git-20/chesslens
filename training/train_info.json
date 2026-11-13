@@ -19,11 +19,16 @@
  },
  "squares": {
   "model": "squares",
-  "params": 886269,
-  "seconds": 3900,
-  "samples_seen": 230400,
+  "params": 1152245,
+  "seconds": 14128.980538606644,
+  "steps": 14760,
+  "batch": 64,
+  "samples_seen": 944640,
   "final": {
-   "loss": 0.0282
+   "acc": 0.9986897706985474,
+   "loss": 0.007686111610382795,
+   "val_acc": 0.989990234375,
+   "val_loss": 0.09159795939922333
   }
  }
 }
