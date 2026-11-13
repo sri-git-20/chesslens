@@ -15,6 +15,13 @@ subprojects {
     val newSubprojectBuildDir: Directory = newBuildDir.dir(project.name)
     project.layout.buildDirectory.value(newSubprojectBuildDir)
 }
+// Android lint's vital check crashes on a plugin's Java sources with the
+// JDK used in CI (a lint bug), so it is skipped for release builds.
+subprojects {
+    tasks.matching { it.name.startsWith("lintVital") }.configureEach {
+        enabled = false
+    }
+}
 subprojects {
     project.evaluationDependsOn(":app")
 }
