@@ -87,14 +87,14 @@ def main():
             if name == "squares":
                 agree.append(float((ref.argmax(-1) == got.argmax(-1)).mean()))
         print(f"  size {size / 1e6:.2f} MB  max|keras-tflite| = {worst:.5f}  "
-              f"in {tuple(i['shape'])} {i['dtype'].__name__} out {tuple(o['shape'])} {o['dtype'].__name__}", flush=True)
+              f"in {[int(v) for v in i['shape']]} {i['dtype'].__name__} out {[int(v) for v in o['shape']]} {o['dtype'].__name__}", flush=True)
         if worst > TOL[name]:
             print(f"  FAIL numeric difference above {TOL[name]}")
             ok = False
         if agree and min(agree) < 0.97:
             print(f"  FAIL argmax agreement {min(agree):.3f}")
             ok = False
-        report[name] = dict(bytes=size, max_abs_diff=worst, input=list(i["shape"]), output=list(o["shape"]),
+        report[name] = dict(bytes=size, max_abs_diff=worst, input=[int(v) for v in i["shape"]], output=[int(v) for v in o["shape"]],
                             input_dtype=i["dtype"].__name__, output_dtype=o["dtype"].__name__, ok=ok)
         failed |= not ok
     json.dump(report, open(os.path.join(args.weights, "export.json"), "w"), indent=1)
