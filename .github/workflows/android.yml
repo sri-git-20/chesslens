@@ -22,9 +22,9 @@ jobs:
       run:
         working-directory: app
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '17'
@@ -87,7 +87,7 @@ jobs:
             --build-number=${{ github.run_number }} \
             --dart-define=BUILD_NUMBER=${{ github.run_number }}
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         with:
           name: chesslens-apk
           path: app/build/app/outputs/flutter-apk/app-release.apk
