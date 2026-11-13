@@ -1,0 +1,23 @@
+name: chesslens
+description: Scan chess diagrams from books and photos, then analyze, play or solve them with Stockfish, fully offline.
+publish_to: 'none'
+
+# versionName+versionCode. CI overrides the build number with the run number.
+version: 0.1.0+1
+
+environment:
+  sdk: ^3.5.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_riverpod: '>=2.6.1 <4.0.0'
+  shared_preferences: ^2.3.2
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: '>=5.0.0 <7.0.0'
+
+flutter:
+  uses-material-design: true
