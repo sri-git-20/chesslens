@@ -1,8 +1,9 @@
-import 'dart:io' show Platform;
+import 'dart:io' show Directory, File, Platform;
 
 import 'package:chessground/chessground.dart' show PieceSet;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:path/path.dart' as p;
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../theme/board_themes.dart';
@@ -32,6 +33,26 @@ int defaultEngineThreads() {
 
 int clampInt(int value, int low, int high) =>
     value < low ? low : (value > high ? high : value);
+
+/// Run once at start-up, before the engine is created.
+///
+/// The stored path of the downloaded network is absolute. If the file is not
+/// there any more (the app folder moved after an update, or the file was
+/// removed), look for the same file name in [networkDirectory]; when it is not
+/// there either, forget the setting so the engine runs the built-in network
+/// instead of failing to start every time.
+Future<void> repairNetworkPath(SharedPreferences prefs, Directory networkDirectory) async {
+  const key = SettingsController.engineNetworkPathKey;
+  final stored = prefs.getString(key);
+  if (stored == null || stored.isEmpty) return;
+  if (await File(stored).exists()) return;
+  final moved = p.join(networkDirectory.path, p.basename(stored));
+  if (await File(moved).exists()) {
+    await prefs.setString(key, moved);
+  } else {
+    await prefs.remove(key);
+  }
+}
 
 const Object _unset = Object();
 

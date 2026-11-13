@@ -174,12 +174,46 @@ ORDER BY c.created_at DESC, c.id DESC''');
     );
   }
 
+  /// The image paths of the rows matching [where], read before they go.
+  static Future<Set<String>> _imagePaths(
+    DatabaseExecutor db,
+    String where,
+    List<Object?> args,
+  ) async {
+    final rows = await db.query(
+      'puzzles',
+      columns: ['page_image_path', 'crop_image_path'],
+      where: where,
+      whereArgs: args,
+    );
+    return {
+      for (final row in rows)
+        for (final column in ['page_image_path', 'crop_image_path'])
+          if (row[column] is String) row[column]! as String,
+    };
+  }
+
+  /// Of [candidates], the paths that no remaining puzzle refers to.
+  static Future<List<String>> _unused(DatabaseExecutor db, Set<String> candidates) async {
+    final unused = <String>[];
+    for (final path in candidates) {
+      final rows = await db.rawQuery(
+        'SELECT 1 FROM puzzles WHERE page_image_path = ? OR crop_image_path = ? LIMIT 1',
+        [path, path],
+      );
+      if (rows.isEmpty) unused.add(path);
+    }
+    return unused;
+  }
+
   @override
-  Future<void> deleteCollection(int id) async {
+  Future<List<String>> deleteCollection(int id) async {
     final db = await _db;
-    await db.transaction((txn) async {
+    return db.transaction((txn) async {
+      final paths = await _imagePaths(txn, 'collection_id = ?', [id]);
       await txn.delete('puzzles', where: 'collection_id = ?', whereArgs: [id]);
       await txn.delete('collections', where: 'id = ?', whereArgs: [id]);
+      return _unused(txn, paths);
     });
   }
 
@@ -219,6 +253,29 @@ ORDER BY c.created_at DESC, c.id DESC''');
   }
 
   @override
+  Future<List<Puzzle>> addPuzzles(List<Puzzle> puzzles) async {
+    if (puzzles.isEmpty) return const [];
+    final db = await _db;
+    return db.transaction((txn) async {
+      final saved = <Puzzle>[];
+      for (final puzzle in puzzles) {
+        final id = await txn.insert('puzzles', _puzzleToRow(puzzle));
+        saved.add(puzzle.copyWith(id: id));
+      }
+      final now = _millis(DateTime.now());
+      for (final collectionId in {for (final puzzle in puzzles) puzzle.collectionId}) {
+        await txn.update(
+          'collections',
+          {'updated_at': now},
+          where: 'id = ?',
+          whereArgs: [collectionId],
+        );
+      }
+      return saved;
+    });
+  }
+
+  @override
   Future<void> updatePuzzle(Puzzle puzzle) async {
     final db = await _db;
     await db.update(
@@ -230,9 +287,13 @@ ORDER BY c.created_at DESC, c.id DESC''');
   }
 
   @override
-  Future<void> deletePuzzle(int id) async {
+  Future<List<String>> deletePuzzle(int id) async {
     final db = await _db;
-    await db.delete('puzzles', where: 'id = ?', whereArgs: [id]);
+    return db.transaction((txn) async {
+      final paths = await _imagePaths(txn, 'id = ?', [id]);
+      await txn.delete('puzzles', where: 'id = ?', whereArgs: [id]);
+      return _unused(txn, paths);
+    });
   }
 
   @override

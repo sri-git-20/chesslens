@@ -61,10 +61,24 @@ class MemoryCollectionRepository implements CollectionRepository {
     _collections[id] = existing.copyWith(name: name.trim(), updatedAt: DateTime.now());
   }
 
+  Set<String> _imagePaths(Iterable<Puzzle> puzzles) => {
+        for (final puzzle in puzzles) ...[
+          if (puzzle.pageImagePath != null) puzzle.pageImagePath!,
+          if (puzzle.cropImagePath != null) puzzle.cropImagePath!,
+        ],
+      };
+
+  List<String> _orphans(Set<String> candidates) {
+    final used = _imagePaths(_puzzles.values);
+    return [for (final path in candidates) if (!used.contains(path)) path];
+  }
+
   @override
-  Future<void> deleteCollection(int id) async {
+  Future<List<String>> deleteCollection(int id) async {
+    final doomed = _puzzles.values.where((p) => p.collectionId == id).toList();
     _collections.remove(id);
     _puzzles.removeWhere((_, puzzle) => puzzle.collectionId == id);
+    return _orphans(_imagePaths(doomed));
   }
 
   @override
@@ -85,13 +99,23 @@ class MemoryCollectionRepository implements CollectionRepository {
   }
 
   @override
+  Future<List<Puzzle>> addPuzzles(List<Puzzle> puzzles) async {
+    final saved = <Puzzle>[];
+    for (final puzzle in puzzles) {
+      saved.add(await addPuzzle(puzzle));
+    }
+    return saved;
+  }
+
+  @override
   Future<void> updatePuzzle(Puzzle puzzle) async {
     if (_puzzles.containsKey(puzzle.id)) _puzzles[puzzle.id] = puzzle;
   }
 
   @override
-  Future<void> deletePuzzle(int id) async {
-    _puzzles.remove(id);
+  Future<List<String>> deletePuzzle(int id) async {
+    final doomed = _puzzles.remove(id);
+    return doomed == null ? const [] : _orphans(_imagePaths([doomed]));
   }
 
   @override

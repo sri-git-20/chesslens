@@ -33,6 +33,7 @@ class PlayController extends ChangeNotifier {
   NormalMove? _hint;
   String? _error;
   int _generation = 0;
+  int _gameId = 0;
   StreamSubscription<AnalysisUpdate>? _engineSub;
   StreamSubscription<AnalysisUpdate>? _hintSub;
 
@@ -90,15 +91,20 @@ class PlayController extends ChangeNotifier {
     _error = null;
     _started = true;
     _newEngineGame = true;
+    // A position that is already over (mate, stalemate) has nothing to play.
+    _end = detectGameEnd(_history);
+    final game = ++_gameId;
     notifyListeners();
     final range = await loadEloRange();
-    if (_disposed) return;
+    // Another game was started, or the user went back to the setup, meanwhile.
+    if (_disposed || game != _gameId) return;
     _strength = level.strength(range);
     _afterMove();
   }
 
   /// Back to the setup screen.
   void newGame() {
+    _gameId++;
     _cancelSearches();
     _started = false;
     _end = null;
@@ -264,6 +270,7 @@ class PlayController extends ChangeNotifier {
       _history.removeLast();
       _moves.removeLast();
     } while (_history.length > 1 && _history.last.turn != _userSide);
+    _end = detectGameEnd(_history);
     notifyListeners();
     _afterMove();
   }

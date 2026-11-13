@@ -8,6 +8,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'src/app.dart';
@@ -18,6 +19,11 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await initReporting();
   final prefs = await SharedPreferences.getInstance();
+  try {
+    await repairNetworkPath(prefs, await getApplicationSupportDirectory());
+  } catch (_) {
+    // Keep the stored setting; the engine reports a clear error if it is bad.
+  }
   runApp(
     ProviderScope(
       overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],

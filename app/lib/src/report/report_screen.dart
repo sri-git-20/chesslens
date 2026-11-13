@@ -88,8 +88,10 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
           includeImage: _includeImage,
         ),
       );
-      final outcome = await ref.read(reportSenderProvider).send(message);
-      ref.read(reportingProvider)?.reportSent(widget.kind.label);
+      final sender = ref.read(reportSenderProvider);
+      final reporting = ref.read(reportingProvider);
+      final outcome = await sender.send(message);
+      reporting?.reportSent(widget.kind.label);
       if (!mounted) return;
       final messenger = ScaffoldMessenger.of(context);
       Navigator.of(context).pop();
@@ -103,8 +105,8 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
         ),
       );
     } catch (error) {
-      ref.read(reportingProvider)?.log.error('Could not open the report', error);
       if (mounted) {
+        ref.read(reportingProvider)?.log.error('Could not open the report', error);
         setState(() {
           _sending = false;
           _error = 'Could not open a mail app or the share sheet. $error';

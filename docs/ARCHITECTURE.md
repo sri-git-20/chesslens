@@ -54,8 +54,8 @@ Puzzle {
   int id; int collectionId;
   String fen;                 // full FEN: placement, side to move, castling, ep, clocks
   Side orientation;
-  String? pageImagePath;      // page photo in app documents, may be deleted later
-  String? cropImagePath;      // diagram crop in app documents
+  String? pageImagePath;      // page photo, path relative to app documents (crops/x.png)
+  String? cropImagePath;      // diagram crop, path relative to app documents
   int? pageNumber;            // PDF page or null
   int? indexOnPage;           // 1-based reading order on the page
   PuzzleStatus status;        // unsolved, solved, failed

@@ -83,6 +83,14 @@ class _PdfScanScreenState extends ConsumerState<PdfScanScreen> {
         unawaited(document.dispose());
         return;
       }
+      if (document.pages.isEmpty) {
+        unawaited(document.dispose());
+        setState(() {
+          _phase = _Phase.error;
+          _error = 'This PDF has no pages.';
+        });
+        return;
+      }
       final old = _document;
       if (old != null) unawaited(old.dispose());
       setState(() {

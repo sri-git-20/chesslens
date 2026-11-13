@@ -120,31 +120,45 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
       }
 
       final target = await showSaveToCollectionDialog(context);
-      if (target == null) return;
-      final Collection collection;
-      if (target.newName != null) {
-        collection = await repository.createCollection(target.newName!);
-      } else {
-        final all = await repository.listCollections();
-        collection = all
-            .firstWhere((summary) => summary.collection.id == target.collectionId)
-            .collection;
-      }
+      if (target == null || !mounted) return;
+      final images = ref.read(imageStoreProvider);
+      Collection? created;
+      var savedName = '';
       String? cropPath;
-      final crop = widget.args.sourceCrop;
-      if (crop != null) cropPath = await ref.read(imageStoreProvider).saveCrop(crop);
-      await repository.addPuzzle(
-        Puzzle(
-          id: 0,
-          collectionId: collection.id,
-          fen: fen,
-          orientation: _model.orientation,
-          cropImagePath: cropPath,
-          createdAt: DateTime.now(),
-        ),
-      );
+      try {
+        final Collection collection;
+        if (target.newName != null) {
+          collection = created = await repository.createCollection(target.newName!);
+        } else {
+          final all = await repository.listCollections();
+          collection = all
+              .firstWhere((summary) => summary.collection.id == target.collectionId)
+              .collection;
+        }
+        final crop = widget.args.sourceCrop;
+        if (crop != null) cropPath = await images.saveCrop(crop);
+        await repository.addPuzzle(
+          Puzzle(
+            id: 0,
+            collectionId: collection.id,
+            fen: fen,
+            orientation: _model.orientation,
+            cropImagePath: cropPath,
+            createdAt: DateTime.now(),
+          ),
+        );
+        savedName = collection.name;
+      } catch (_) {
+        // Do not leave an empty collection or an unused image behind.
+        try {
+          if (cropPath != null) await images.delete([cropPath]);
+          if (created != null) await repository.deleteCollection(created.id);
+        } catch (_) {}
+        rethrow;
+      }
+      if (!mounted) return;
       ref.invalidate(collectionsProvider);
-      _showMessage('Saved to "${collection.name}".');
+      _showMessage('Saved to "$savedName".');
     } catch (error) {
       _showMessage('Could not save the position. $error');
     } finally {

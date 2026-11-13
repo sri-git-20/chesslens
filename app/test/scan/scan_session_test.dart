@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:chesslens/src/chess/board_utils.dart';
 import 'package:chesslens/src/collections/collection_providers.dart';
 import 'package:chesslens/src/collections/memory_collection_repository.dart';
+import 'package:chesslens/src/collections/models.dart';
 import 'package:chesslens/src/collections/save_dialog.dart';
 import 'package:chesslens/src/scan/geometry.dart';
 import 'package:chesslens/src/scan/model_decode.dart';
@@ -63,12 +64,23 @@ class FakeService implements RecognitionService {
 
 class FakeImages implements ImageStore {
   final List<Uint8List> saved = [];
+  final List<String> deleted = [];
 
   @override
   Future<String> saveCrop(Uint8List png) async {
     saved.add(png);
-    return '/images/${saved.length}.png';
+    return 'crops/${saved.length}.png';
   }
+
+  @override
+  Future<void> delete(Iterable<String> paths) async => deleted.addAll(paths);
+}
+
+/// A repository whose bulk insert fails, to test the clean-up.
+class FailingRepository extends MemoryCollectionRepository {
+  @override
+  Future<List<Puzzle>> addPuzzles(List<Puzzle> puzzles) async =>
+      throw StateError('disk full');
 }
 
 ScanPage page(int number) => ScanPage(
@@ -111,6 +123,8 @@ void main() {
       expect(session.selectRange('2-3, 6'), isNull);
       expect(session.selected.map((b) => b.number), [2, 3, 6]);
       expect(session.selectRange('9'), 'Numbers go from 1 to 6.');
+      expect(session.selectRange('99999999999999999999999'), 'Numbers go from 1 to 6.');
+      expect(session.selectRange('1-99999999999999999999999'), 'Numbers go from 1 to 6.');
       expect(session.selected.map((b) => b.number), [2, 3, 6]);
       session.selectAll();
       expect(session.selected, hasLength(6));
@@ -215,6 +229,46 @@ void main() {
       expect(puzzles, hasLength(2));
       expect(puzzles[0].pageImagePath, puzzles[1].pageImagePath);
       expect(images.saved, hasLength(3));
+    });
+
+    test('a failed save leaves no new collection and no image files', () async {
+      final repository = FailingRepository();
+      final images = FakeImages();
+      final session = ScanSession(FakeService());
+      session.addPage(page(7), [
+        rawBoard(Quad.fromRect(100, 100, 400, 400)),
+        rawBoard(Quad.fromRect(100, 600, 400, 900)),
+      ]);
+      await expectLater(
+        saveScannedBoards(
+          repository: repository,
+          images: images,
+          boards: session.selected,
+          target: const SaveTarget.create('New'),
+        ),
+        throwsStateError,
+      );
+      expect(await repository.listCollections(), isEmpty);
+      expect(images.deleted, unorderedEquals(['crops/1.png', 'crops/2.png', 'crops/3.png']));
+    });
+
+    test('a failed save into an existing collection keeps that collection', () async {
+      final repository = FailingRepository();
+      final existing = await repository.createCollection('Mine');
+      final images = FakeImages();
+      final session = ScanSession(FakeService());
+      session.addPage(page(7), [rawBoard(Quad.fromRect(100, 100, 400, 400))]);
+      await expectLater(
+        saveScannedBoards(
+          repository: repository,
+          images: images,
+          boards: session.selected,
+          target: SaveTarget.existing(existing.id),
+        ),
+        throwsStateError,
+      );
+      expect((await repository.listCollections()).single.collection.id, existing.id);
+      expect(images.deleted, hasLength(2));
     });
   });
 }

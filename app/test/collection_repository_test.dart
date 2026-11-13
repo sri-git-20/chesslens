@@ -117,6 +117,44 @@ void repositoryContract(Future<CollectionRepository> Function() create) {
     expect(await repository.getPuzzle(a.id), isNull);
   });
 
+  Puzzle withImages(int collectionId, String page, String crop) => Puzzle(
+        id: 0,
+        collectionId: collectionId,
+        fen: fenA,
+        orientation: Side.white,
+        createdAt: DateTime.fromMillisecondsSinceEpoch(1700000000000),
+        pageImagePath: page,
+        cropImagePath: crop,
+      );
+
+  test('deleting a puzzle reports only the images nobody else uses', () async {
+    final collection = await repository.createCollection('Book');
+    final a = await repository.addPuzzle(withImages(collection.id, 'crops/page.png', 'crops/a.png'));
+    final b = await repository.addPuzzle(withImages(collection.id, 'crops/page.png', 'crops/b.png'));
+    expect(await repository.deletePuzzle(a.id), ['crops/a.png']);
+    expect((await repository.deletePuzzle(b.id))..sort(), ['crops/b.png', 'crops/page.png']);
+    expect(await repository.deletePuzzle(b.id), isEmpty);
+  });
+
+  test('deleting a collection reports its unused images', () async {
+    final keep = await repository.createCollection('Keep');
+    final drop = await repository.createCollection('Drop');
+    await repository.addPuzzle(withImages(keep.id, 'crops/shared.png', 'crops/k.png'));
+    await repository.addPuzzle(withImages(drop.id, 'crops/shared.png', 'crops/d.png'));
+    expect(await repository.deleteCollection(drop.id), ['crops/d.png']);
+  });
+
+  test('addPuzzles saves all puzzles with ids', () async {
+    final collection = await repository.createCollection('Book');
+    final saved = await repository.addPuzzles([
+      newPuzzle(collection.id, fenA, page: 1, index: 1),
+      newPuzzle(collection.id, fenB, page: 1, index: 2),
+    ]);
+    expect(saved.map((p) => p.id).toSet(), hasLength(2));
+    expect(await repository.puzzlesIn(collection.id), hasLength(2));
+    expect(await repository.addPuzzles(const []), isEmpty);
+  });
+
   test('deleting a collection deletes its puzzles only', () async {
     final keep = await repository.createCollection('Keep');
     final drop = await repository.createCollection('Drop');
@@ -145,6 +183,25 @@ void main() {
         path: inMemoryDatabasePath,
       ),
     );
+
+    test('addPuzzles is all or nothing', () async {
+      final repository = SqfliteCollectionRepository(
+        factory: databaseFactoryFfi,
+        path: inMemoryDatabasePath,
+      );
+      addTearDown(repository.close);
+      final collection = await repository.createCollection('Book');
+      // The second puzzle points at a collection that does not exist, which
+      // the foreign key rejects.
+      await expectLater(
+        repository.addPuzzles([
+          newPuzzle(collection.id, fenA),
+          newPuzzle(collection.id + 100, fenB),
+        ]),
+        throwsA(anything),
+      );
+      expect(await repository.puzzlesIn(collection.id), isEmpty);
+    });
 
     test('data survives closing and reopening the file', () async {
       final path = '${Directory.systemTemp.createTempSync('chesslens_db').path}/test.db';

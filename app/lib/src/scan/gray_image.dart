@@ -269,6 +269,12 @@ Warp warpRegion(GrayImage image, Quad src, int out) {
       final p = inverse.apply(Pt(i + 0.5, j + 0.5));
       final sx = p.x - 0.5;
       final sy = p.y - 0.5;
+      // A degenerate quad (corners dragged onto one line) can map a pixel to
+      // infinity; floor() would throw on it.
+      if (!sx.isFinite || !sy.isFinite) {
+        result[j * out + i] = fill;
+        continue;
+      }
       final xi = sx.floor();
       final yi = sy.floor();
       final ax = sx - xi;

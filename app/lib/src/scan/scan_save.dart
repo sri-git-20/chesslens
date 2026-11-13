@@ -38,6 +38,10 @@ String scannedFullFen(String placement) {
 }
 
 /// Saves [boards] as puzzles and returns the collection they went to.
+///
+/// All or nothing: if anything fails, the images written so far and a
+/// collection created by this call are removed again, so a retry does not
+/// leave duplicates behind.
 Future<Collection> saveScannedBoards({
   required CollectionRepository repository,
   required ImageStore images,
@@ -45,33 +49,52 @@ Future<Collection> saveScannedBoards({
   required SaveTarget target,
   DateTime? now,
 }) async {
-  final Collection collection;
-  if (target.newName != null) {
-    collection = await repository.createCollection(target.newName!);
-  } else {
-    final all = await repository.listCollections();
-    collection = all
-        .firstWhere((s) => s.collection.id == target.collectionId)
-        .collection;
+  Collection? created;
+  final written = <String>[];
+  try {
+    final Collection collection;
+    if (target.newName != null) {
+      collection = created = await repository.createCollection(target.newName!);
+    } else {
+      final all = await repository.listCollections();
+      collection = all
+          .firstWhere((s) => s.collection.id == target.collectionId)
+          .collection;
+    }
+    final pagePaths = <int, String>{};
+    final puzzles = <Puzzle>[];
+    for (final board in boards) {
+      var pagePath = pagePaths[board.page.key];
+      if (pagePath == null) {
+        pagePath = await images.saveCrop(board.page.jpeg);
+        written.add(pagePath);
+        pagePaths[board.page.key] = pagePath;
+      }
+      final cropPath = await images.saveCrop(board.cropPng);
+      written.add(cropPath);
+      puzzles.add(
+        Puzzle(
+          id: 0,
+          collectionId: collection.id,
+          fen: scannedFullFen(board.reading.placement),
+          orientation: board.reading.orientation,
+          pageImagePath: pagePath,
+          cropImagePath: cropPath,
+          pageNumber: board.page.pageNumber,
+          indexOnPage: board.indexOnPage,
+          createdAt: now ?? DateTime.now(),
+        ),
+      );
+    }
+    await repository.addPuzzles(puzzles);
+    return collection;
+  } catch (_) {
+    try {
+      await images.delete(written);
+      if (created != null) await repository.deleteCollection(created.id);
+    } catch (_) {
+      // Cleaning up is best effort; report the original failure.
+    }
+    rethrow;
   }
-  final pagePaths = <int, String>{};
-  for (final board in boards) {
-    final pagePath = pagePaths[board.page.key] ??=
-        await images.saveCrop(board.page.jpeg);
-    final cropPath = await images.saveCrop(board.cropPng);
-    await repository.addPuzzle(
-      Puzzle(
-        id: 0,
-        collectionId: collection.id,
-        fen: scannedFullFen(board.reading.placement),
-        orientation: board.reading.orientation,
-        pageImagePath: pagePath,
-        cropImagePath: cropPath,
-        pageNumber: board.page.pageNumber,
-        indexOnPage: board.indexOnPage,
-        createdAt: now ?? DateTime.now(),
-      ),
-    );
-  }
-  return collection;
 }

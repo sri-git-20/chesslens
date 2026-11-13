@@ -36,7 +36,8 @@ class HomeScreen extends ConsumerWidget {
     final theme = Theme.of(context);
     final collections = ref.watch(collectionsProvider);
 
-    return Scaffold(
+    return LostPickRecovery(
+      child: Scaffold(
       appBar: AppBar(
         title: const Text(appName),
         actions: [
@@ -135,6 +136,7 @@ class HomeScreen extends ConsumerWidget {
           ),
         ],
       ),
+    ),
     );
   }
 }

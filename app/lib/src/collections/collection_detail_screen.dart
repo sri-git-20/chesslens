@@ -80,7 +80,10 @@ class _CollectionDetailScreenState extends ConsumerState<CollectionDetailScreen>
     );
     if (confirmed != true) return;
     try {
-      await ref.read(collectionRepositoryProvider).deleteCollection(widget.collection.id);
+      final orphans =
+          await ref.read(collectionRepositoryProvider).deleteCollection(widget.collection.id);
+      await ref.read(imageStoreProvider).delete(orphans);
+      if (!mounted) return;
       ref.invalidate(collectionsProvider);
       if (mounted) Navigator.of(context).pop();
     } catch (error) {
@@ -95,7 +98,9 @@ class _CollectionDetailScreenState extends ConsumerState<CollectionDetailScreen>
     );
     if (confirmed != true) return;
     try {
-      await ref.read(collectionRepositoryProvider).deletePuzzle(puzzle.id);
+      final orphans = await ref.read(collectionRepositoryProvider).deletePuzzle(puzzle.id);
+      await ref.read(imageStoreProvider).delete(orphans);
+      if (!mounted) return;
       _reload();
     } catch (error) {
       _message('Could not delete the puzzle. $error');

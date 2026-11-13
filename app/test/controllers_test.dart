@@ -189,6 +189,33 @@ void main() {
     });
   });
 
+  group('PlayController on finished positions', () {
+    test('a position that is already mate ends the game without asking the engine', () async {
+      final start = Chess.fromSetup(Setup.parseFen('7k/6Q1/6K1/8/8/8/8/8 b - - 0 1'));
+      final engine = FakeEngineService();
+      final controller = PlayController(start: start, engine: engine);
+      addTearDown(controller.dispose);
+      await controller.startGame(userSide: Side.black, level: PlayLevel.levels[3]);
+      expect(controller.end?.reason.name, 'checkmate');
+      expect(controller.resultText, 'Checkmate. The engine wins.');
+      expect(controller.isThinking, isFalse);
+      expect(controller.isUserTurn, isFalse);
+      expect(engine.requests, isEmpty);
+    });
+
+    test('starting another game while the first is still loading does not start the old one', () async {
+      final engine = FakeEngineService();
+      final controller = PlayController(start: Chess.initial, engine: engine);
+      addTearDown(controller.dispose);
+      final first = controller.startGame(userSide: Side.black, level: PlayLevel.levels[3]);
+      controller.newGame();
+      await first;
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+      expect(controller.started, isFalse);
+      expect(engine.requests, isEmpty);
+    });
+  });
+
   group('SolveController', () {
     const mateInOne = '6k1/5ppp/8/8/8/8/8/R3K3 w - - 0 1';
 

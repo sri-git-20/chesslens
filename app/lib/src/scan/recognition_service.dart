@@ -74,28 +74,67 @@ class IsolateRecognitionService implements RecognitionService {
 
     final ready = ReceivePort();
     final replies = ReceivePort();
+    final exit = ReceivePort();
     _replies = replies;
+    final Isolate isolate;
     try {
-      _isolate = await Isolate.spawn(
+      isolate = await Isolate.spawn(
         _workerMain,
         _WorkerInit(ready.sendPort, replies.sendPort, detector, corners, squares),
         debugName: 'chesslens-recognition',
+        onExit: exit.sendPort,
       );
     } catch (error) {
       ready.close();
-      throw ScanException('The recognition worker could not start. $error');
-    }
-    replies.listen(_onReply);
-    final first = await ready.first;
-    ready.close();
-    if (first is _WorkerFailed) {
-      _isolate?.kill(priority: Isolate.immediate);
-      _isolate = null;
+      exit.close();
       replies.close();
       _replies = null;
+      throw ScanException('The recognition worker could not start. $error');
+    }
+    _isolate = isolate;
+    // If the worker dies (for example out of memory on a huge page), nobody
+    // would ever answer: fail the waiting calls so the screen can show an
+    // error, and start a fresh worker on the next call.
+    exit.listen((_) {
+      exit.close();
+      ready.sendPort.send(_WorkerFailed('The recognition worker stopped.'));
+      _onWorkerGone(isolate);
+    });
+    replies.listen(_onReply);
+    final Object? first;
+    try {
+      first = await ready.first.timeout(const Duration(seconds: 60));
+    } catch (_) {
+      ready.close();
+      isolate.kill(priority: Isolate.immediate);
+      _onWorkerGone(isolate);
+      throw const ScanException('The recognition worker did not start.');
+    }
+    ready.close();
+    if (first is _WorkerFailed) {
+      isolate.kill(priority: Isolate.immediate);
+      _onWorkerGone(isolate);
       throw ScanException(first.message);
     }
     return first as SendPort;
+  }
+
+  void _onWorkerGone(Isolate isolate) {
+    if (!identical(isolate, _isolate)) return;
+    _isolate = null;
+    _replies?.close();
+    _replies = null;
+    _starting = null;
+    if (_disposed) return;
+    final waiting = List<Completer<Object?>>.of(_pending.values);
+    _pending.clear();
+    for (final completer in waiting) {
+      if (!completer.isCompleted) {
+        completer.completeError(
+          const ScanException('The recognition stopped unexpectedly. Please try again.'),
+        );
+      }
+    }
   }
 
   void _onReply(Object? message) {
@@ -113,6 +152,10 @@ class IsolateRecognitionService implements RecognitionService {
   Future<T> _call<T>(_Request Function(int id) build) async {
     if (_disposed) throw const ScanException('Scanning was closed.');
     final port = await _start();
+    if (_disposed) throw const ScanException('Scanning was closed.');
+    if (_isolate == null) {
+      throw const ScanException('The recognition stopped unexpectedly. Please try again.');
+    }
     final id = _nextId++;
     final completer = Completer<Object?>();
     _pending[id] = completer;

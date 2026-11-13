@@ -24,8 +24,12 @@ RangeParse parseRange(String text, int max) {
     if (match == null) {
       return const RangeParse.error('Type numbers like 3-7, 9.');
     }
-    final a = int.parse(match.group(1)!);
-    final b = match.group(2) == null ? a : int.parse(match.group(2)!);
+    // tryParse: a very long number is not an int and must not throw.
+    final a = int.tryParse(match.group(1)!);
+    final b = match.group(2) == null ? a : int.tryParse(match.group(2)!);
+    if (a == null || b == null) {
+      return RangeParse.error('Numbers go from 1 to $max.');
+    }
     if (a > b) {
       return RangeParse.error('"$part" goes backwards.');
     }
