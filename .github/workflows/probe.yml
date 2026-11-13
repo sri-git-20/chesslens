@@ -16,7 +16,7 @@ jobs:
         run: |
           cd /tmp && flutter create --platforms=android,ios probe_app >/dev/null
           cd probe_app
-          flutter pub add chessground dartchess multistockfish flutter_litert pdfrx image image_picker file_picker share_plus flutter_email_sender sqflite path_provider path http crypto device_info_plus fast_immutable_collections flutter_riverpod shared_preferences
+          flutter pub add riverpod sqflite_common_ffi chessground dartchess multistockfish flutter_litert pdfrx image image_picker file_picker share_plus flutter_email_sender sqflite path_provider path http crypto device_info_plus fast_immutable_collections flutter_riverpod shared_preferences
           flutter pub add --dev flutter_launcher_icons
           flutter --version > /tmp/out_versions.txt
           cat pubspec.yaml >> /tmp/out_versions.txt
@@ -26,7 +26,7 @@ jobs:
           cp /tmp/out_versions.txt out/VERSIONS.txt
           cp /tmp/probe_app/pubspec.lock out/pubspec.lock
           cd ~/.pub-cache/hosted/pub.dev
-          for p in chessground dartchess multistockfish multistockfish_chess multistockfish_light flutter_litert pdfrx pdfrx_engine image_picker file_picker share_plus flutter_email_sender sqflite path_provider device_info_plus flutter_launcher_icons; do
+          for p in flutter_riverpod riverpod image sqflite_common sqflite_common_ffi fast_immutable_collections http crypto shared_preferences chessground dartchess multistockfish multistockfish_chess multistockfish_light flutter_litert pdfrx pdfrx_engine image_picker file_picker share_plus flutter_email_sender sqflite path_provider device_info_plus flutter_launcher_icons; do
             d=$(ls -d ${p}-* 2>/dev/null | sort -V | tail -1)
             [ -z "$d" ] && continue
             mkdir -p "$GITHUB_WORKSPACE/out/$d"
