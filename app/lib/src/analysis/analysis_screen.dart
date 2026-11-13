@@ -6,7 +6,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../board/game_board.dart';
 import '../chess/board_utils.dart';
 import '../engine/engine_providers.dart';
-import '../engine/engine_service.dart';
 import '../navigation.dart';
 import '../settings/settings_controller.dart';
 import 'analysis_controller.dart';

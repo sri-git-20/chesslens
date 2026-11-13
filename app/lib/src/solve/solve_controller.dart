@@ -8,6 +8,7 @@ import '../chess/san.dart';
 import '../collections/collection_repository.dart';
 import '../collections/models.dart';
 import '../engine/engine_service.dart';
+import '../engine/uci.dart';
 import 'solve_judge.dart';
 
 /// Search limits used while solving.

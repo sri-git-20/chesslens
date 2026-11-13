@@ -1,5 +1,3 @@
-import 'dart:typed_data';
-
 import 'package:dartchess/dartchess.dart' show Side;
 import 'package:flutter/foundation.dart';
 

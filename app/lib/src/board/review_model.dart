@@ -2,7 +2,6 @@ import 'package:chessground/chessground.dart' show Pieces;
 import 'package:dartchess/dartchess.dart';
 import 'package:flutter/foundation.dart';
 
-import '../chess/board_utils.dart';
 import '../chess/castling.dart';
 import '../chess/legality.dart';
 import 'review_args.dart';

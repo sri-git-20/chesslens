@@ -1,10 +1,11 @@
+import 'dart:typed_data';
+
 import 'package:chessground/chessground.dart';
 import 'package:dartchess/dartchess.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../analysis/analysis_screen.dart';
-import '../chess/castling.dart';
 import '../chess/fen_input.dart';
 import '../collections/collection_providers.dart';
 import '../collections/models.dart';
