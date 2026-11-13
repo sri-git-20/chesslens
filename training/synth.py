@@ -42,7 +42,7 @@ def make_sample(seed, lib, category=None, holdout=False):
             page = pages.make_book_page(rng, lib, holdout)
         sev = 0.0 if cat == "clean" else float(rng.uniform(0.2, 1.0))
         img, quads, keep = camera.photo(rng, page.img, [b[0] for b in page.boards], sev)
-    bl = [dict(quad=quads[i], labels=page.boards[i][1], flipped=page.boards[i][2]) for i in keep]
+    bl = [dict(quad=quads[i], labels=page.boards[i][1], flipped=page.boards[i][2], meta=page.boards[i][3]) for i in keep]
     return Sample(img, bl, cat, page.kind)
 
 

@@ -38,8 +38,17 @@ def main():
     W = args.work
     metrics = json.load(open(f"{W}/metrics.json"))
     meta = json.load(open(f"{W}/data/meta.json"))
-    exp = json.load(open(f"{W}/models/export.json"))
-    tr = {n: json.load(open(f"{W}/models/{n}_train.json")) for n in ("detector", "corners", "squares")}
+    # Info about models that were not retrained in this run is kept in committed json files.
+    def merged(base_path, items):
+        base = json.load(open(base_path)) if os.path.exists(base_path) else {}
+        base.update(items)
+        json.dump(base, open(base_path, "w"), indent=1)
+        return base
+    exp_new = json.load(open(f"{W}/models/export.json"))
+    tr_new = {n: json.load(open(f"{W}/models/{n}_train.json")) for n in ("detector", "corners", "squares")
+              if os.path.exists(f"{W}/models/{n}_train.json")}
+    exp = merged("export_info.json", exp_new)
+    tr = merged("train_info.json", tr_new)
     timings = {}
     if os.path.exists(f"{W}/timings.txt"):
         for line in open(f"{W}/timings.txt"):

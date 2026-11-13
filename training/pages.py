@@ -191,7 +191,7 @@ def make_book_page(rng, lib, holdout, n_diag=None, text_only=False):
             bw = r.img.shape[1]
             x = mx + j * (cellw + gap) + (0 if left_aligned else (cellw - bw) // 2)
             page.paste(Image.fromarray(r.img), (x, y))
-            out.append((r.quad + [x, y], r.labels, r.flipped))
+            out.append((r.quad + [x, y], r.labels, r.flipped, r.meta))
             if rng.random() < 0.7:
                 cap = CAPTIONS[int(rng.integers(len(CAPTIONS)))] if rng.random() < 0.6 else f"No. {int(rng.integers(1, 400))}"
                 d.text((x + bw / 2, y + bh + fs * 0.15), cap, font=capfont, fill=(ink, ink, ink), anchor="ma")
@@ -220,7 +220,7 @@ def make_book_crop(rng, lib, holdout):
     if extra_top > fs:
         d.text((m, 2), _sentence(rng, 4), font=f, fill=(20, 20, 20))
     arr = apply_paper(rng, np.asarray(page))
-    return Page(arr, [(r.quad + [m, m + extra_top], r.labels, r.flipped)], "crop")
+    return Page(arr, [(r.quad + [m, m + extra_top], r.labels, r.flipped, r.meta)], "crop")
 
 
 _DARK_BG = [(22, 21, 18), (38, 36, 33), (49, 46, 43), (30, 30, 40), (18, 18, 18)]
@@ -259,7 +259,7 @@ def make_screenshot(rng, lib, holdout):
         m = int(S * rng.uniform(0, 0.08))
         img = np.full((S + 2 * m, S + 2 * m, 3), bg, np.uint8)
         img[m:m + S, m:m + S] = r.img
-        return Page(img, [(r.quad + [m, m], r.labels, r.flipped)], "screenshot")
+        return Page(img, [(r.quad + [m, m], r.labels, r.flipped, r.meta)], "screenshot")
     if mode == "phone":
         W = int(rng.uniform(450, 900))
         H = int(W * rng.uniform(1.8, 2.2))
@@ -283,7 +283,7 @@ def make_screenshot(rng, lib, holdout):
         for i in range(4):
             bx = int(W * (0.1 + i * 0.22))
             d.rounded_rectangle([bx, int(H * 0.93), bx + int(W * 0.16), int(H * 0.97)], radius=8, fill=panel)
-        return Page(np.asarray(im).copy(), [(r.quad + [x, y], r.labels, r.flipped)], "screenshot")
+        return Page(np.asarray(im).copy(), [(r.quad + [x, y], r.labels, r.flipped, r.meta)], "screenshot")
     # desktop
     W = int(rng.uniform(900, 1400))
     H = int(W * rng.uniform(0.55, 0.75))
@@ -301,4 +301,4 @@ def make_screenshot(rng, lib, holdout):
         _ui_text(rng, d, px + 10, y + 10, int(W * 0.3) - 20, S - 20, fonts.load(uf, max(10, int(S * 0.04))), fg)
     im.paste(Image.fromarray(r.img), (x, y))
     d.text((10, 8), "Analysis board", font=fonts.load(uf, 16), fill=fg)
-    return Page(np.asarray(im).copy(), [(r.quad + [x, y], r.labels, r.flipped)], "screenshot")
+    return Page(np.asarray(im).copy(), [(r.quad + [x, y], r.labels, r.flipped, r.meta)], "screenshot")

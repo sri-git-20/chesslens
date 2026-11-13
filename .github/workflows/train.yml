@@ -12,7 +12,19 @@ on:
         description: smoke (tiny, minutes) or full (about 3 h)
         type: choice
         default: full
-        options: [smoke, full]
+        options: [smoke, full, analyze, retrain]
+      models:
+        description: retrain only, comma list (squares, detector, corners)
+        default: squares
+      squares_minutes:
+        description: retrain only, squares training minutes
+        default: '240'
+      detector_minutes:
+        description: retrain only, detector training minutes
+        default: '40'
+      pages:
+        description: retrain only, number of synthetic pages
+        default: '10000'
 
 concurrency:
   group: train-m2
@@ -39,17 +51,30 @@ jobs:
         env:
           MSG: ${{ github.event.head_commit.message }}
           INPUT: ${{ github.event.inputs.mode }}
+          IN_MODELS: ${{ github.event.inputs.models }}
+          IN_SQ: ${{ github.event.inputs.squares_minutes }}
+          IN_DET: ${{ github.event.inputs.detector_minutes }}
+          IN_PAGES: ${{ github.event.inputs.pages }}
         run: |
           if [ -n "$INPUT" ]; then m="$INPUT"
+          elif [[ "$MSG" == *"[analyze]"* ]]; then m=analyze
+          elif [[ "$MSG" == *"[retrain]"* ]]; then m=retrain
           elif [[ "$MSG" == *"[full]"* ]]; then m=full
           else m=smoke; fi
+          models="detector,corners,squares"; pages=10000
+          if [ "$m" = retrain ]; then models="${IN_MODELS:-squares}"; pages="${IN_PAGES:-10000}"; fi
+          msq="${IN_SQ:-240}"; mdet="${IN_DET:-40}"
           echo "mode=$m" >> "$GITHUB_OUTPUT"
-          echo "MODE: $m"
+          echo "MODE: $m models: $models"
           if [ "$m" = full ]; then
             printf '%s\n' PAGES=10000 SQPB=2 MIN_DET=55 MIN_COR=30 MIN_SQ=65 EVAL_PAGES=100 SPE=120 >> "$GITHUB_ENV"
+          elif [ "$m" = retrain ]; then
+            printf '%s\n' PAGES=$pages SQPB=2 MIN_DET=$mdet MIN_COR=30 MIN_SQ=$msq EVAL_PAGES=100 SPE=120 >> "$GITHUB_ENV"
           else
-            printf '%s\n' PAGES=300 SQPB=1 MIN_DET=1.5 MIN_COR=1 MIN_SQ=1.5 EVAL_PAGES=4 SPE=15 >> "$GITHUB_ENV"
+            printf '%s\n' PAGES=300 SQPB=1 MIN_DET=1.5 MIN_COR=1 MIN_SQ=1.5 EVAL_PAGES=4 SPE=15 ANALYZE_PAGES=60 >> "$GITHUB_ENV"
           fi
+          printf '%s\n' MODE=$m TRAIN_MODELS=$models >> "$GITHUB_ENV"
+          if [ "$m" = analyze ]; then echo ANALYZE_PAGES=600 >> "$GITHUB_ENV"; fi
 
       - name: Free disk space
         working-directory: .
@@ -79,28 +104,40 @@ jobs:
           path: training/work/svg_cache
           key: svg-cache-v1
 
+      - name: Error analysis of the squares model
+        if: env.MODE == 'analyze'
+        run: python analyze_squares.py --models ../app/assets/models --pages $ANALYZE_PAGES
+
       - name: Generate synthetic data
+        if: env.MODE != 'analyze'
         run: ./timeit.sh generate_data python gen_data.py --out work/data --pages $PAGES --sq-per-board $SQPB
 
       - name: Train detector
+        if: env.MODE != 'analyze' && contains(env.TRAIN_MODELS, 'detector')
         run: ./timeit.sh train_detector python train.py --model detector --data work/data --minutes $MIN_DET --batch 32 --steps-per-epoch $SPE
 
       - name: Train corners
+        if: env.MODE != 'analyze' && contains(env.TRAIN_MODELS, 'corners')
         run: ./timeit.sh train_corners python train.py --model corners --data work/data --minutes $MIN_COR --batch 32 --steps-per-epoch $SPE
 
       - name: Train squares
+        if: env.MODE != 'analyze' && contains(env.TRAIN_MODELS, 'squares')
         run: ./timeit.sh train_squares python train.py --model squares --data work/data --minutes $MIN_SQ --batch 64 --steps-per-epoch $SPE
 
       - name: Export to TFLite and verify
-        run: ./timeit.sh export python export_tflite.py --weights work/models --data work/data --out ../app/assets/models
+        if: env.MODE != 'analyze'
+        run: ./timeit.sh export python export_tflite.py --weights work/models --data work/data --out ../app/assets/models --only $TRAIN_MODELS
 
       - name: Evaluate
+        if: env.MODE != 'analyze'
         run: ./timeit.sh evaluate python evaluate.py --models ../app/assets/models --pages $EVAL_PAGES --out work/metrics.json
 
       - name: Fixtures
+        if: env.MODE != 'analyze'
         run: ./timeit.sh fixtures python make_fixtures.py --models ../app/assets/models --out ../app/test/fixtures/scan
 
       - name: Write MODELS.md and REPORT.md
+        if: env.MODE != 'analyze'
         run: python write_docs.py --mode ${{ steps.mode.outputs.mode }}
 
       - uses: actions/upload-artifact@v4
@@ -116,15 +153,18 @@ jobs:
             training/work/models
             training/work/failures
             training/work/data/meta.json
+            training/work/analysis
+            training/train_info.json
+            training/export_info.json
           if-no-files-found: warn
 
       - name: Commit outputs to m2-training
-        if: steps.mode.outputs.mode == 'full' && github.ref == 'refs/heads/m2-training'
+        if: (steps.mode.outputs.mode == 'full' || steps.mode.outputs.mode == 'retrain') && github.ref == 'refs/heads/m2-training'
         working-directory: .
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -f app/assets/models app/test/fixtures/scan training/REPORT.md
+          git add -f app/assets/models app/test/fixtures/scan training/REPORT.md training/train_info.json training/export_info.json
           git commit -m "Add trained recognition models, fixtures and report
 
           Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>

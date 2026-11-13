@@ -21,6 +21,7 @@ class BoardRender:
     quad: np.ndarray     # 4x2 float, playing-area corners TL, TR, BR, BL
     labels: np.ndarray   # 8x8 class ids as drawn (row 0 = image top)
     flipped: bool
+    meta: dict = None
 
 
 def orient(placement, flipped):
@@ -121,6 +122,7 @@ def _blend_piece(canvas, piece, px, py, gray, halo):
 
 def _draw_pieces(canvas, x0, y0, sq, labels, style, rng, scale, gray, halo, hollow_p):
     ps = style["piece"] if isinstance(style, dict) else style
+    used_hollow = np.zeros((8, 8), bool)
     for r in range(8):
         for c in range(8):
             cls = int(labels[r, c])
@@ -129,6 +131,7 @@ def _draw_pieces(canvas, x0, y0, sq, labels, style, rng, scale, gray, halo, holl
             imgs = ps.imgs
             if ps.hollow is not None and cls <= 6 and rng.random() < hollow_p:
                 imgs = ps.hollow
+                used_hollow[r, c] = True
             s = int(round(sq * scale * rng.uniform(0.97, 1.03)))
             s = max(4, s)
             piece = cv2.resize(imgs[cls - 1], (s, s), interpolation=cv2.INTER_AREA)
@@ -136,6 +139,7 @@ def _draw_pieces(canvas, x0, y0, sq, labels, style, rng, scale, gray, halo, holl
             px = int(round(x0 + c * sq + (sq - s) / 2 + dx))
             py = int(round(y0 + r * sq + (sq - s) / 2 + dy))
             _blend_piece(canvas, piece, px, py, gray, halo)
+    return used_hollow
 
 
 def _hatch(B, sq, angle, sp_frac, w_frac, ink, cross):
@@ -219,8 +223,8 @@ def render_book_board(rng, placement, style, sq, flipped):
     canvas[o:o + B, o:o + B] = brd
     # pieces (greyscale)
     rgb = np.repeat(canvas[..., None], 3, 2)
-    _draw_pieces(rgb, o, o, sq, labels, style, rng, style["piece_scale"], True,
-                 style["halo"], style["hollow_p"])
+    hol = _draw_pieces(rgb, o, o, sq, labels, style, rng, style["piece_scale"], True,
+                       style["halo"], style["hollow_p"])
     img = np.clip(rgb, 0, 255).astype(np.uint8)
     # coordinates outside the frame
     if style["coords"]:
@@ -238,7 +242,9 @@ def render_book_board(rng, placement, style, sq, flipped):
                 items.append((S - mid, c, ranks[i]))
         img = _text(img, items, style["font"], fs, (20, 20, 20))
     quad = np.array([[o, o], [o + B, o], [o + B, o + B], [o, o + B]], np.float64)
-    return BoardRender(img, quad, labels, flipped)
+    meta = dict(kind="book", dark=dk[0], piece=style["piece"].name, pkind=style["piece"].kind,
+                holdout=style["piece"].holdout, hollow=hol, sq=sq, halo=style["halo"])
+    return BoardRender(img, quad, labels, flipped, meta)
 
 
 # --------------------------------------------------------------------------
@@ -264,7 +270,7 @@ def render_screen_board(rng, placement, style, sq, flipped):
             r, c = int(rng.integers(8)), int(rng.integers(8))
             roi = canvas[o + r * sq:o + (r + 1) * sq, o + c * sq:o + (c + 1) * sq]
             roi[:] = roi * 0.6 + hl * 0.4
-    _draw_pieces(canvas, o, o, sq, labels, style, rng, style["piece_scale"], False, 0.0, 0.0)
+    hol = _draw_pieces(canvas, o, o, sq, labels, style, rng, style["piece_scale"], False, 0.0, 0.0)
     if style["dots"]:  # legal-move hint dots
         for _ in range(int(rng.integers(1, 5))):
             r, c = int(rng.integers(8)), int(rng.integers(8))
@@ -292,4 +298,6 @@ def render_screen_board(rng, placement, style, sq, flipped):
             items.append((cm / 2, c, ranks[i]))
         img = _text(img, items, style["font"], max(6, int(0.3 * sq)), (225, 225, 225))
     quad = np.array([[o, o], [o + B, o], [o + B, o + B], [o, o + B]], np.float64)
-    return BoardRender(img, quad, labels, flipped)
+    meta = dict(kind="screen", dark="screen", piece=style["piece"].name, pkind=style["piece"].kind,
+                holdout=style["piece"].holdout, hollow=hol, sq=sq, halo=0.0)
+    return BoardRender(img, quad, labels, flipped, meta)

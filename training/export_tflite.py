@@ -50,10 +50,11 @@ def main():
     ap.add_argument("--data", default="work/data")
     ap.add_argument("--out", default="../app/assets/models")
     ap.add_argument("--fp32", action="store_true")
+    ap.add_argument("--only", default="detector,corners,squares", help="comma list of models to (re-)export")
     args = ap.parse_args()
     os.makedirs(args.out, exist_ok=True)
     report, failed = {}, False
-    for name in ["detector", "corners", "squares"]:
+    for name in args.only.split(","):
         print(f"== {name}", flush=True)
         w = np.load(os.path.join(args.weights, name + ".npz"))
         weights = [w[f"arr_{i}"] for i in range(len(w.files))]

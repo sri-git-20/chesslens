@@ -1,0 +1,59 @@
+{
+ "detector": {
+  "bytes": 1391904,
+  "max_abs_diff": 0.0071,
+  "input": [
+   1,
+   384,
+   384,
+   1
+  ],
+  "output": [
+   1,
+   96,
+   96,
+   9
+  ],
+  "input_dtype": "float32",
+  "output_dtype": "float32",
+  "ok": true
+ },
+ "corners": {
+  "bytes": 1585668,
+  "max_abs_diff": 0.0016,
+  "input": [
+   1,
+   256,
+   256,
+   1
+  ],
+  "output": [
+   1,
+   64,
+   64,
+   4
+  ],
+  "input_dtype": "float32",
+  "output_dtype": "float32",
+  "ok": true
+ },
+ "squares": {
+  "bytes": 1776012,
+  "max_abs_diff": 0.0035,
+  "input": [
+   1,
+   256,
+   256,
+   1
+  ],
+  "output": [
+   1,
+   8,
+   8,
+   13
+  ],
+  "input_dtype": "float32",
+  "output_dtype": "float32",
+  "ok": true
+ }
+}
