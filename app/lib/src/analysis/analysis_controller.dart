@@ -45,15 +45,17 @@ class AnalysisController extends ChangeNotifier {
     required Position start,
     required EngineService engine,
     AnalysisConfig config = const AnalysisConfig(),
+    bool engineOn = true,
   })  : tree = MoveTree(start),
         _engine = engine,
-        _config = config;
+        _config = config,
+        _engineOn = engineOn;
 
   final MoveTree tree;
   final EngineService _engine;
   AnalysisConfig _config;
 
-  bool _engineOn = true;
+  bool _engineOn;
   bool _visible = true;
   bool _disposed = false;
   bool _searching = false;
