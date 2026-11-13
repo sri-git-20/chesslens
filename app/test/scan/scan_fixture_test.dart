@@ -93,7 +93,7 @@ void main() {
       final unused = [...analysis.boards];
       for (final r in reference) {
         final ref = r as Map<String, dynamic>;
-        final refQuad = _quadOf(ref['quad']!);
+        final refQuad = _quadOf(ref['quad'] as Object);
         unused.sort(
           (a, b) => _cornerDistance(a.quad, refQuad).compareTo(_cornerDistance(b.quad, refQuad)),
         );
@@ -111,7 +111,7 @@ void main() {
       // How good is the model itself against the ground truth?
       for (final t in image['boards'] as List) {
         final truth = t as Map<String, dynamic>;
-        final truthQuad = _quadOf(truth['quad']!);
+        final truthQuad = _quadOf(truth['quad'] as Object);
         final close = analysis.boards.where((b) => _cornerDistance(b.quad, truthQuad) < 8);
         if (close.isEmpty) continue;
         final best = close.reduce(
