@@ -1,0 +1,46 @@
+name: Probe package APIs
+on:
+  push:
+    branches: [probe]
+permissions:
+  contents: write
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+      - uses: subosito/flutter-action@v2
+        with: { channel: stable, cache: true }
+      - name: Resolve packages
+        run: |
+          cd /tmp && flutter create --platforms=android,ios probe_app >/dev/null
+          cd probe_app
+          flutter pub add chessground dartchess multistockfish flutter_litert pdfrx image image_picker file_picker share_plus flutter_email_sender sqflite path_provider path http crypto device_info_plus fast_immutable_collections flutter_riverpod shared_preferences
+          flutter pub add --dev flutter_launcher_icons
+          flutter --version > /tmp/out_versions.txt
+          cat pubspec.yaml >> /tmp/out_versions.txt
+      - name: Copy package sources
+        run: |
+          mkdir -p out
+          cp /tmp/out_versions.txt out/VERSIONS.txt
+          cp /tmp/probe_app/pubspec.lock out/pubspec.lock
+          cd ~/.pub-cache/hosted/pub.dev
+          for p in chessground dartchess multistockfish multistockfish_chess multistockfish_light flutter_litert pdfrx pdfrx_engine image_picker file_picker share_plus flutter_email_sender sqflite path_provider device_info_plus flutter_launcher_icons; do
+            d=$(ls -d ${p}-* 2>/dev/null | sort -V | tail -1)
+            [ -z "$d" ] && continue
+            mkdir -p "$GITHUB_WORKSPACE/out/$d"
+            cp -r "$d/lib" "$GITHUB_WORKSPACE/out/$d/" 2>/dev/null || true
+            cp "$d"/README.md "$d"/pubspec.yaml "$GITHUB_WORKSPACE/out/$d/" 2>/dev/null || true
+            [ -d "$d/example/lib" ] && mkdir -p "$GITHUB_WORKSPACE/out/$d/example" && cp -r "$d/example/lib" "$GITHUB_WORKSPACE/out/$d/example/"
+            [ -d "$d/android" ] && find "$d/android" -name "build.gradle*" -exec cp --parents {} "$GITHUB_WORKSPACE/out/" \;
+          done
+          ls "$GITHUB_WORKSPACE/out"
+      - name: Push output branch
+        run: |
+          cd out
+          git init -q -b probe-output
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A && git commit -qm "probe output"
+          git push -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" probe-output
