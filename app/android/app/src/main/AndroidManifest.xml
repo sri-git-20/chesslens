@@ -1,4 +1,6 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Only used to download the optional full-strength network. -->
+    <uses-permission android:name="android.permission.INTERNET"/>
     <application
         android:label="ChessLens"
         android:name="${applicationName}"

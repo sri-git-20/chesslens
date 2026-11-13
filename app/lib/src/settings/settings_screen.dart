@@ -6,7 +6,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../app_info.dart';
 import '../board/static_board.dart';
 import '../chess/board_utils.dart';
+import '../report/report_builder.dart';
+import '../report/report_screen.dart';
 import '../theme/board_themes.dart';
+import 'network_tile.dart';
 import 'settings_controller.dart';
 
 class SettingsScreen extends ConsumerWidget {
@@ -138,6 +141,16 @@ class SettingsScreen extends ConsumerWidget {
                 ? 'No limit'
                 : (value >= 60 ? '${value ~/ 60} min' : '$value s'),
             onChanged: controller.setTimeLimitSeconds,
+          ),
+          const NetworkTile(),
+          const Divider(height: 32),
+          const _SectionHeader('Help'),
+          ListTile(
+            leading: const Icon(Icons.bug_report_outlined),
+            title: const Text('Report a problem'),
+            subtitle: const Text('Preview a message to the developer. Nothing is sent without you.'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => openReportScreen(context, kind: ReportKind.problem),
           ),
           const Divider(height: 32),
           const _SectionHeader('About'),

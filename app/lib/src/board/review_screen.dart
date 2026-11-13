@@ -10,7 +10,11 @@ import '../chess/fen_input.dart';
 import '../collections/collection_providers.dart';
 import '../collections/models.dart';
 import '../collections/save_dialog.dart';
+import '../export/export_menu.dart';
+import '../export/pgn.dart';
 import '../play/play_screen.dart';
+import '../report/report_builder.dart';
+import '../report/report_screen.dart';
 import '../solve/solve_screen.dart';
 import 'board_providers.dart';
 import 'board_size.dart';
@@ -40,6 +44,7 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
   late final ReviewModel _model;
   EditorTool _tool = const MoveTool();
   bool _saving = false;
+  final GlobalKey _boardKey = GlobalKey();
 
   @override
   void initState() {
@@ -147,6 +152,20 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
     }
   }
 
+  void _reportRecognition() {
+    final crop = widget.args.sourceCrop;
+    if (crop == null) return;
+    openReportScreen(
+      context,
+      kind: ReportKind.recognition,
+      recognition: RecognitionReportData(
+        detectedFen: widget.args.boardFen,
+        correctedFen: _model.fullFen ?? _model.board.fen,
+        image: crop,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final boardSettings = ref.watch(chessboardSettingsProvider);
@@ -155,6 +174,16 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
       appBar: AppBar(
         title: const Text('Review'),
         actions: [
+          ExportMenuButton(
+            fen: () => _model.fullFen,
+            pgn: () {
+              final fen = _model.fullFen;
+              return fen == null ? null : buildPgn(fen: fen);
+            },
+            boardKey: _boardKey,
+            onReportRecognition:
+                widget.args.sourceCrop == null ? null : _reportRecognition,
+          ),
           IconButton(
             tooltip: 'Flip board',
             icon: const Icon(Icons.swap_vert),
@@ -177,7 +206,9 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
                 ],
                 BoardSize(
                   maxHeightFraction: 0.5,
-                  builder: (context, size) => ChessboardEditor(
+                  builder: (context, size) => RepaintBoundary(
+                    key: _boardKey,
+                    child: ChessboardEditor(
                     size: size,
                     orientation: _model.orientation,
                     pieces: _model.pieces,
@@ -191,6 +222,7 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
                     onEditedSquare: _onEditedSquare,
                     onDroppedPiece: _model.dropPiece,
                     onDiscardedPiece: _model.removePiece,
+                    ),
                   ),
                 ),
                 if (_model.flagged.isNotEmpty)

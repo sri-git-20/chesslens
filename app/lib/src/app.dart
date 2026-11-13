@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'app_info.dart';
 import 'home/home_screen.dart';
 import 'navigation.dart';
+import 'report/crash_prompt.dart';
 import 'settings/settings_controller.dart';
 import 'theme/app_theme.dart';
 
@@ -20,7 +21,7 @@ class ChessLensApp extends ConsumerWidget {
       darkTheme: AppTheme.dark(trueBlack: settings.trueBlack),
       themeMode: settings.themeMode,
       navigatorObservers: [appRouteObserver],
-      home: const HomeScreen(),
+      home: const CrashReportPrompt(child: HomeScreen()),
     );
   }
 }

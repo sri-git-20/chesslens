@@ -19,6 +19,7 @@ the code on both sides.
 | `solve/` | Solve mode: user moves, engine checks, plays until mate or a draw |
 | `collections/` | `Collection` and `Puzzle` models, sqflite repository, list and detail screens |
 | `scan/` | Image input (camera, gallery, PDF), on-device recognition, diagram selection |
+| `export/` | PGN building, Lichess link, board image, sharing |
 | `report/` | Error log, crash detection, pre-filled bug-report email |
 
 State management: Riverpod (`flutter_riverpod` 3.x). Storage: sqflite for
