@@ -1,7 +1,12 @@
+import 'package:chessground/chessground.dart' show PieceSet, PieceWidget;
+import 'package:dartchess/dartchess.dart' show Piece;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../app_info.dart';
+import '../board/static_board.dart';
+import '../chess/board_utils.dart';
+import '../theme/board_themes.dart';
 import 'settings_controller.dart';
 
 class SettingsScreen extends ConsumerWidget {
@@ -55,6 +60,86 @@ class SettingsScreen extends ConsumerWidget {
             onChanged: controller.setTrueBlack,
           ),
           const Divider(height: 32),
+          const _SectionHeader('Board'),
+          const _BoardPreview(),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 4, 20, 8),
+            child: Wrap(
+              spacing: 8,
+              runSpacing: 4,
+              children: [
+                for (final boardTheme in BoardTheme.values)
+                  ChoiceChip(
+                    label: Text(boardTheme.label),
+                    selected: settings.boardTheme == boardTheme,
+                    onSelected: (_) => controller.setBoardTheme(boardTheme),
+                  ),
+              ],
+            ),
+          ),
+          ListTile(
+            title: const Text('Piece set'),
+            subtitle: Text(settings.pieceSet.label),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () async {
+              final chosen = await showDialog<PieceSet>(
+                context: context,
+                builder: (_) => _PieceSetDialog(selected: settings.pieceSet),
+              );
+              if (chosen != null) controller.setPieceSet(chosen);
+            },
+          ),
+          SwitchListTile(
+            title: const Text('Show coordinates'),
+            subtitle: const Text('Letters and numbers on the board edge.'),
+            value: settings.showCoordinates,
+            onChanged: controller.setShowCoordinates,
+          ),
+          const Divider(height: 32),
+          const _SectionHeader('Engine'),
+          _ChoiceRow<int>(
+            title: 'Threads',
+            subtitle: 'More threads are faster but use more battery.',
+            values: const [1, 2, 3, 4],
+            selected: settings.engineThreads,
+            label: (value) => '$value',
+            onChanged: controller.setEngineThreads,
+          ),
+          _ChoiceRow<int>(
+            title: 'Hash',
+            subtitle: 'Memory for the engine, in MB.',
+            values: hashOptionsMb,
+            selected: settings.engineHashMb,
+            label: (value) => '$value',
+            onChanged: controller.setEngineHashMb,
+          ),
+          _ChoiceRow<int>(
+            title: 'Lines in analysis',
+            subtitle: 'How many best lines to show (MultiPV).',
+            values: const [1, 2, 3],
+            selected: settings.multiPv,
+            label: (value) => '$value',
+            onChanged: controller.setMultiPv,
+          ),
+          _DropdownTile(
+            title: 'Depth limit',
+            subtitle: 'Analysis stops at this depth.',
+            values: depthLimitOptions,
+            selected: settings.depthLimit,
+            label: (value) => value == 0 ? 'No limit' : 'Depth $value',
+            onChanged: controller.setDepthLimit,
+          ),
+          _DropdownTile(
+            title: 'Time limit',
+            subtitle: 'Analysis stops after this long.',
+            values: timeLimitOptions,
+            selected: settings.timeLimitSeconds,
+            label: (value) => value == 0
+                ? 'No limit'
+                : (value >= 60 ? '${value ~/ 60} min' : '$value s'),
+            onChanged: controller.setTimeLimitSeconds,
+          ),
+          const Divider(height: 32),
           const _SectionHeader('About'),
           const ListTile(
             title: Text('Version'),
@@ -101,6 +186,131 @@ class _SectionHeader extends StatelessWidget {
         style: theme.textTheme.labelLarge?.copyWith(
           color: theme.colorScheme.primary,
         ),
+      ),
+    );
+  }
+}
+
+class _BoardPreview extends StatelessWidget {
+  const _BoardPreview();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Center(
+      child: Padding(
+        padding: EdgeInsets.symmetric(vertical: 8),
+        child: StaticBoard(fen: startPlacement, size: 200),
+      ),
+    );
+  }
+}
+
+class _PieceSetDialog extends StatelessWidget {
+  const _PieceSetDialog({required this.selected});
+
+  final PieceSet selected;
+
+  @override
+  Widget build(BuildContext context) {
+    return SimpleDialog(
+      title: const Text('Piece set'),
+      children: [
+        for (final set in PieceSet.values)
+          ListTile(
+            selected: set == selected,
+            leading: PieceWidget(
+              piece: Piece.whiteKnight,
+              size: 36,
+              pieceAssets: set.assets,
+            ),
+            title: Text(set.label),
+            trailing: set == selected ? const Icon(Icons.check) : null,
+            onTap: () => Navigator.of(context).pop(set),
+          ),
+      ],
+    );
+  }
+}
+
+/// A title with a row of choices below it.
+class _ChoiceRow<T> extends StatelessWidget {
+  const _ChoiceRow({
+    required this.title,
+    required this.subtitle,
+    required this.values,
+    required this.selected,
+    required this.label,
+    required this.onChanged,
+  });
+
+  final String title;
+  final String subtitle;
+  final List<T> values;
+  final T selected;
+  final String Function(T value) label;
+  final ValueChanged<T> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(title, style: theme.textTheme.bodyLarge),
+          Text(
+            subtitle,
+            style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+          ),
+          const SizedBox(height: 8),
+          SegmentedButton<T>(
+            segments: [
+              for (final value in values)
+                ButtonSegment<T>(value: value, label: Text(label(value))),
+            ],
+            selected: {selected},
+            showSelectedIcon: false,
+            onSelectionChanged: (selection) => onChanged(selection.first),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _DropdownTile<T> extends StatelessWidget {
+  const _DropdownTile({
+    required this.title,
+    required this.subtitle,
+    required this.values,
+    required this.selected,
+    required this.label,
+    required this.onChanged,
+  });
+
+  final String title;
+  final String subtitle;
+  final List<T> values;
+  final T selected;
+  final String Function(T value) label;
+  final ValueChanged<T> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      title: Text(title),
+      subtitle: Text(subtitle),
+      trailing: DropdownButton<T>(
+        value: selected,
+        underline: const SizedBox.shrink(),
+        items: [
+          for (final value in values)
+            DropdownMenuItem<T>(value: value, child: Text(label(value))),
+        ],
+        onChanged: (value) {
+          if (value != null) onChanged(value);
+        },
       ),
     );
   }

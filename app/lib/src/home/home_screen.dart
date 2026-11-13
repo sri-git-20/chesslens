@@ -1,9 +1,20 @@
+import 'package:dartchess/dartchess.dart' show Side;
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../app_info.dart';
+import '../board/review_args.dart';
+import '../board/review_screen.dart';
+import '../board/static_board.dart';
+import '../chess/board_utils.dart';
+import '../collections/collection_detail_screen.dart';
+import '../collections/collection_providers.dart';
+import '../collections/models.dart';
+import '../collections/save_dialog.dart';
 import '../settings/settings_screen.dart';
+import 'paste_fen_dialog.dart';
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
 
   void _comingSoon(BuildContext context, String what) {
@@ -14,9 +25,24 @@ class HomeScreen extends StatelessWidget {
       );
   }
 
+  Future<void> _pasteFen(BuildContext context) async {
+    final input = await showPasteFenDialog(context);
+    if (input == null || !context.mounted) return;
+    await openReview<void>(
+      context,
+      ReviewArgs(
+        boardFen: input.placement,
+        sideToMove: input.turn,
+        orientation: Side.white,
+      ),
+    );
+  }
+
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
+    final collections = ref.watch(collectionsProvider);
+
     return Scaffold(
       appBar: AppBar(
         title: const Text(appName),
@@ -65,23 +91,115 @@ class HomeScreen extends StatelessWidget {
             icon: Icons.content_paste_outlined,
             title: 'Paste FEN',
             subtitle: 'Set up a position from text',
-            onTap: () => _comingSoon(context, 'Position entry'),
+            onTap: () => _pasteFen(context),
+          ),
+          _SourceTile(
+            icon: Icons.grid_on_outlined,
+            title: 'Set up a position',
+            subtitle: 'Start from an empty board',
+            onTap: () => openReview<void>(
+              context,
+              const ReviewArgs(boardFen: emptyPlacement),
+            ),
           ),
           const SizedBox(height: 24),
           Text('Collections', style: theme.textTheme.titleMedium),
           const SizedBox(height: 8),
-          Card(
-            elevation: 0,
-            color: theme.colorScheme.surfaceContainerHighest,
-            child: const Padding(
+          collections.when(
+            loading: () => const Padding(
               padding: EdgeInsets.all(20),
-              child: Text(
-                'No collections yet. Puzzles you load from a page are saved '
-                'here.',
-              ),
+              child: Center(child: CircularProgressIndicator()),
             ),
+            error: (error, _) => _InfoCard(
+              text: 'Collections could not be loaded.',
+              color: theme.colorScheme.errorContainer,
+              textColor: theme.colorScheme.onErrorContainer,
+            ),
+            data: (list) => list.isEmpty
+                ? _InfoCard(
+                    text: 'No collections yet. Save a position from Review to '
+                        'start one.',
+                    color: theme.colorScheme.surfaceContainerHighest,
+                  )
+                : Column(
+                    children: [
+                      for (final summary in list)
+                        _CollectionTile(
+                          summary: summary,
+                          onTap: () async {
+                            await Navigator.of(context).push<void>(
+                              MaterialPageRoute<void>(
+                                builder: (_) => CollectionDetailScreen(
+                                  collection: summary.collection,
+                                ),
+                              ),
+                            );
+                            ref.invalidate(collectionsProvider);
+                          },
+                        ),
+                    ],
+                  ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _InfoCard extends StatelessWidget {
+  const _InfoCard({required this.text, required this.color, this.textColor});
+
+  final String text;
+  final Color color;
+  final Color? textColor;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      elevation: 0,
+      color: color,
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Text(text, style: TextStyle(color: textColor)),
+      ),
+    );
+  }
+}
+
+class _CollectionTile extends StatelessWidget {
+  const _CollectionTile({required this.summary, required this.onTap});
+
+  final CollectionSummary summary;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final preview = summary.previewFen;
+    final solved = summary.puzzleCount == 0
+        ? ''
+        : ' · ${summary.solvedCount} solved';
+    return Card(
+      elevation: 0,
+      margin: const EdgeInsets.symmetric(vertical: 6),
+      color: scheme.surfaceContainerHigh,
+      clipBehavior: Clip.antiAlias,
+      child: ListTile(
+        minVerticalPadding: 10,
+        leading: preview == null
+            ? CircleAvatar(
+                backgroundColor: scheme.primaryContainer,
+                foregroundColor: scheme.onPrimaryContainer,
+                child: const Icon(Icons.folder_outlined),
+              )
+            : ClipRRect(
+                borderRadius: BorderRadius.circular(4),
+                child: StaticBoard(fen: preview, size: 48, showCoordinates: false),
+              ),
+        title: Text(summary.collection.name),
+        subtitle: Text('${puzzleCountLabel(summary.puzzleCount)}$solved'),
+        trailing: const Icon(Icons.chevron_right),
+        onTap: onTap,
       ),
     );
   }
