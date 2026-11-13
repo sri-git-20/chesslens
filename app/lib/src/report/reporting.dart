@@ -104,7 +104,7 @@ void _installHandlers(Reporting reporting) {
     if (pair is List && pair.length == 2) {
       reporting.recordError(
         'Isolate error',
-        pair[0] ?? 'unknown',
+        '${pair[0]}',
         StackTrace.fromString('${pair[1]}'),
       );
     }

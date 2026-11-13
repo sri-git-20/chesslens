@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'dart:io';
-import 'dart:typed_data';
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
@@ -13,23 +12,24 @@ import 'package:url_launcher/url_launcher.dart';
 
 import 'pgn.dart';
 
-void _message(BuildContext context, String text) {
-  if (!context.mounted) return;
-  ScaffoldMessenger.of(context)
+void _say(ScaffoldMessengerState messenger, String text) {
+  messenger
     ..hideCurrentSnackBar()
     ..showSnackBar(SnackBar(content: Text(text)));
 }
 
 Future<void> copyToClipboard(BuildContext context, String text, String what) async {
+  final messenger = ScaffoldMessenger.of(context);
   try {
     await Clipboard.setData(ClipboardData(text: text));
-    _message(context, '$what copied.');
+    _say(messenger, '$what copied.');
   } catch (error) {
-    _message(context, 'Could not copy. $error');
+    _say(messenger, 'Could not copy. $error');
   }
 }
 
 Future<void> openInLichess(BuildContext context, String fen) async {
+  final messenger = ScaffoldMessenger.of(context);
   final url = lichessAnalysisUrl(fen);
   var opened = false;
   try {
@@ -37,9 +37,9 @@ Future<void> openInLichess(BuildContext context, String fen) async {
   } catch (_) {
     opened = false;
   }
-  if (!opened && context.mounted) {
+  if (!opened) {
     await Clipboard.setData(ClipboardData(text: url));
-    _message(context, 'Could not open the browser. The link was copied.');
+    _say(messenger, 'Could not open the browser. The link was copied.');
   }
 }
 
@@ -65,10 +65,11 @@ Future<File> _writeTemp(String name, List<int> bytes) async {
 }
 
 Future<void> shareBoardImage(BuildContext context, GlobalKey boundaryKey) async {
+  final messenger = ScaffoldMessenger.of(context);
   try {
     final png = await capturePng(boundaryKey);
     if (png == null) {
-      _message(context, 'The board is not ready yet.');
+      _say(messenger, 'The board is not ready yet.');
       return;
     }
     final file = await _writeTemp('chesslens-board.png', png);
@@ -76,12 +77,13 @@ Future<void> shareBoardImage(BuildContext context, GlobalKey boundaryKey) async 
       ShareParams(files: [XFile(file.path, mimeType: 'image/png')]),
     );
   } catch (error) {
-    _message(context, 'Could not share the board image. $error');
+    _say(messenger, 'Could not share the board image. $error');
   }
 }
 
 /// Writes [pgn] to a temporary `.pgn` file named after [name] and shares it.
 Future<void> sharePgnFile(BuildContext context, String name, String pgn) async {
+  final messenger = ScaffoldMessenger.of(context);
   try {
     final file = await _writeTemp('${safeFileName(name)}.pgn', utf8.encode(pgn));
     await SharePlus.instance.share(
@@ -91,6 +93,6 @@ Future<void> sharePgnFile(BuildContext context, String name, String pgn) async {
       ),
     );
   } catch (error) {
-    _message(context, 'Could not export the PGN. $error');
+    _say(messenger, 'Could not export the PGN. $error');
   }
 }

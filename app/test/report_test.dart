@@ -165,7 +165,7 @@ void main() {
       expect(text, contains('entry number 99'));
       expect(text, isNot(contains('entry number 0\n')));
       // The first kept line is a whole entry.
-      expect(text, startsWith(RegExp(r'\d{4}-')));
+      expect(text, matches(RegExp(r'^\d{4}-[\s\S]*$')));
     });
 
     test('cuts very long entries', () {
