@@ -175,7 +175,7 @@ void main() {
         rawBoard(Quad.fromRect(100, 700, 400, 1000), placement: '4k3/8/8/8/8/8/8/4K3'),
         rawBoard(Quad.fromRect(100, 100, 400, 400)),
       ]);
-      session.boards.last.selected = false;
+      session.boards.first.selected = false;
 
       final collection = await saveScannedBoards(
         repository: repository,

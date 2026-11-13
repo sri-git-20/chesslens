@@ -49,7 +49,7 @@ void main() {
     test('ignores values below the threshold', () {
       final out = detectorOutput();
       setCell(out, 5, 5, 0.34);
-      setCell(out, 6, 40, 0.35);
+      setCell(out, 6, 40, 0.36);
       final dets = decodeDetector(out, 1.0);
       expect(dets.map((d) => (d.cellX, d.cellY)), [(6, 40)]);
     });

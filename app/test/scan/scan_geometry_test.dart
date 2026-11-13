@@ -156,7 +156,7 @@ void main() {
 
     test('pixels outside the page are white', () {
       final page = GrayImage.filled(100, 100, 0.0);
-      final quad = Quad.fromRect(-100, -100, 0, 0);
+      final quad = Quad.fromRect(-100, -100, -10, -10);
       final warp = warpRegion(page, quad, 64);
       expect(warp.image.data.every((v) => v == 1.0), isTrue);
     });
