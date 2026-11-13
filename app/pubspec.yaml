@@ -20,6 +20,11 @@ dependencies:
   sqflite: ^2.4.6
   path_provider: ^2.1.6
   path: ^1.9.0
+  flutter_litert: ^4.1.1
+  image: ^4.12.0
+  image_picker: ^1.2.4
+  file_picker: ^13.3.3
+  pdfrx: ^2.12.1
 
 dev_dependencies:
   flutter_test:
@@ -29,3 +34,5 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  assets:
+    - assets/models/

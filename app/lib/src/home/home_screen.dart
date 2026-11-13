@@ -11,19 +11,12 @@ import '../collections/collection_detail_screen.dart';
 import '../collections/collection_providers.dart';
 import '../collections/models.dart';
 import '../collections/save_dialog.dart';
+import '../scan/scan_launcher.dart';
 import '../settings/settings_screen.dart';
 import 'paste_fen_dialog.dart';
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
-
-  void _comingSoon(BuildContext context, String what) {
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(
-        SnackBar(content: Text('$what arrives in a later test build.')),
-      );
-  }
 
   Future<void> _pasteFen(BuildContext context) async {
     final input = await showPasteFenDialog(context);
@@ -73,19 +66,19 @@ class HomeScreen extends ConsumerWidget {
             icon: Icons.photo_camera_outlined,
             title: 'Camera',
             subtitle: 'Photograph a page or a single diagram',
-            onTap: () => _comingSoon(context, 'Scanning'),
+            onTap: () => scanFromCamera(context),
           ),
           _SourceTile(
             icon: Icons.photo_library_outlined,
             title: 'Gallery',
             subtitle: 'Pick a photo or screenshot',
-            onTap: () => _comingSoon(context, 'Scanning'),
+            onTap: () => scanFromGallery(context),
           ),
           _SourceTile(
             icon: Icons.picture_as_pdf_outlined,
             title: 'PDF',
             subtitle: 'Choose pages from a scanned book',
-            onTap: () => _comingSoon(context, 'PDF import'),
+            onTap: () => scanFromPdf(context),
           ),
           _SourceTile(
             icon: Icons.content_paste_outlined,

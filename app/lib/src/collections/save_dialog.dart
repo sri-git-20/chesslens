@@ -13,23 +13,30 @@ class SaveTarget {
   final String? newName;
 }
 
-/// Asks where to save. Returns `null` when cancelled.
-Future<SaveTarget?> showSaveToCollectionDialog(BuildContext context) {
+/// Asks where to save. Returns `null` when cancelled. [suggestedName] fills
+/// the new-collection field.
+Future<SaveTarget?> showSaveToCollectionDialog(
+  BuildContext context, {
+  String? suggestedName,
+}) {
   return showDialog<SaveTarget>(
     context: context,
-    builder: (context) => const SaveToCollectionDialog(),
+    builder: (context) => SaveToCollectionDialog(suggestedName: suggestedName),
   );
 }
 
 class SaveToCollectionDialog extends ConsumerStatefulWidget {
-  const SaveToCollectionDialog({super.key});
+  const SaveToCollectionDialog({super.key, this.suggestedName});
+
+  final String? suggestedName;
 
   @override
   ConsumerState<SaveToCollectionDialog> createState() => _SaveToCollectionDialogState();
 }
 
 class _SaveToCollectionDialogState extends ConsumerState<SaveToCollectionDialog> {
-  final TextEditingController _name = TextEditingController();
+  late final TextEditingController _name =
+      TextEditingController(text: widget.suggestedName);
 
   @override
   void dispose() {
