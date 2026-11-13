@@ -20,6 +20,12 @@ dependencies:
   sqflite: ^2.4.6
   path_provider: ^2.1.6
   path: ^1.9.0
+  flutter_email_sender: ^11.2.0
+  share_plus: ^13.3.1
+  device_info_plus: ^13.3.0
+  http: ^1.6.0
+  crypto: ^3.0.8
+  url_launcher: ^6.3.0
 
 dev_dependencies:
   flutter_test:

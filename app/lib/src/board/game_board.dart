@@ -21,6 +21,7 @@ class GameBoard extends ConsumerStatefulWidget {
     this.shapes = const {},
     this.onMove,
     this.maxHeightFraction = 0.55,
+    this.boundaryKey,
   });
 
   final Position position;
@@ -30,6 +31,9 @@ class GameBoard extends ConsumerStatefulWidget {
   final Set<Shape> shapes;
   final void Function(NormalMove move)? onMove;
   final double maxHeightFraction;
+
+  /// Key of a [RepaintBoundary] around the board, used to render it to an image.
+  final GlobalKey? boundaryKey;
 
   @override
   ConsumerState<GameBoard> createState() => _GameBoardState();
@@ -79,16 +83,20 @@ class _GameBoardState extends ConsumerState<GameBoard> {
     final settings = ref.watch(chessboardSettingsProvider);
     return BoardSize(
       maxHeightFraction: widget.maxHeightFraction,
-      builder: (context, size) => Chessboard(
-        size: size,
-        controller: _controller,
-        orientation: widget.orientation,
-        settings: settings,
-        shapes: widget.shapes,
-        onMove: (move, {bool? viaDragAndDrop}) {
-          if (move is NormalMove) widget.onMove?.call(move);
-        },
-      ),
+      builder: (context, size) {
+        final board = Chessboard(
+          size: size,
+          controller: _controller,
+          orientation: widget.orientation,
+          settings: settings,
+          shapes: widget.shapes,
+          onMove: (move, {bool? viaDragAndDrop}) {
+            if (move is NormalMove) widget.onMove?.call(move);
+          },
+        );
+        final key = widget.boundaryKey;
+        return key == null ? board : RepaintBoundary(key: key, child: board);
+      },
     );
   }
 }

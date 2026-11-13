@@ -5,6 +5,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../board/game_board.dart';
 import '../chess/board_utils.dart';
+import '../export/export_menu.dart';
+import '../export/pgn.dart';
 import '../engine/engine_providers.dart';
 import '../navigation.dart';
 import '../settings/settings_controller.dart';
@@ -33,6 +35,7 @@ class _AnalysisScreenState extends ConsumerState<AnalysisScreen>
   ModalRoute<void>? _route;
   bool _covered = false;
   bool _inBackground = false;
+  final GlobalKey _boardKey = GlobalKey();
 
   @override
   void initState() {
@@ -122,6 +125,11 @@ class _AnalysisScreenState extends ConsumerState<AnalysisScreen>
           appBar: AppBar(
             title: const Text('Analysis'),
             actions: [
+              ExportMenuButton(
+                fen: () => controller.position.fen,
+                pgn: () => pgnFromTree(controller.tree),
+                boardKey: _boardKey,
+              ),
               IconButton(
                 tooltip: controller.engineOn ? 'Turn engine off' : 'Turn engine on',
                 isSelected: controller.engineOn,
@@ -153,6 +161,7 @@ class _AnalysisScreenState extends ConsumerState<AnalysisScreen>
                   shapes: _shapes(),
                   maxHeightFraction: 0.45,
                   onMove: controller.makeMove,
+                  boundaryKey: _boardKey,
                 ),
                 _NavigationBar(controller: controller),
                 Expanded(

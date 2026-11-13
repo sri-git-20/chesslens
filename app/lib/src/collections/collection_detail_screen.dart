@@ -5,11 +5,13 @@ import '../board/review_args.dart';
 import '../board/review_screen.dart';
 import '../board/static_board.dart';
 import '../chess/fen_input.dart';
+import '../export/pgn.dart';
+import '../export/share_actions.dart';
 import 'collection_providers.dart';
 import 'models.dart';
 import 'name_dialog.dart';
 
-enum _MenuAction { rename, delete }
+enum _MenuAction { rename, exportPgn, delete }
 
 /// The puzzles of one collection as a grid of small boards.
 class CollectionDetailScreen extends ConsumerStatefulWidget {
@@ -54,6 +56,20 @@ class _CollectionDetailScreenState extends ConsumerState<CollectionDetailScreen>
       ref.invalidate(collectionsProvider);
     } catch (error) {
       _message('Could not rename the collection. $error');
+    }
+  }
+
+  Future<void> _exportPgn() async {
+    try {
+      final puzzles = await ref.read(collectionRepositoryProvider).puzzlesIn(widget.collection.id);
+      if (puzzles.isEmpty) {
+        _message('This collection has no puzzles to export.');
+        return;
+      }
+      if (!mounted) return;
+      await sharePgnFile(context, _name, buildCollectionPgn(_name, puzzles));
+    } catch (error) {
+      _message('Could not export the collection. $error');
     }
   }
 
@@ -137,10 +153,12 @@ class _CollectionDetailScreenState extends ConsumerState<CollectionDetailScreen>
             tooltip: 'More',
             onSelected: (action) => switch (action) {
               _MenuAction.rename => _rename(),
+              _MenuAction.exportPgn => _exportPgn(),
               _MenuAction.delete => _deleteCollection(),
             },
             itemBuilder: (context) => const [
               PopupMenuItem(value: _MenuAction.rename, child: Text('Rename')),
+              PopupMenuItem(value: _MenuAction.exportPgn, child: Text('Export as PGN')),
               PopupMenuItem(value: _MenuAction.delete, child: Text('Delete collection')),
             ],
           ),
