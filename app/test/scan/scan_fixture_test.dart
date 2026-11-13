@@ -104,7 +104,12 @@ void main() {
         final fen = placementFromClasses(squareClasses(match.probs));
         final diffs = _squareDiffs(fen, ref['fen'] as String);
         totalDiffs += diffs;
-        expect(diffs, lessThanOrEqualTo(2), reason: '$file: squares differ from the reference');
+        // Lossless PNGs must match the Python reference almost exactly. JPEG
+        // decoders differ slightly between Dart and Python, which can tip a
+        // borderline square on a blurry photo, so those get a little room.
+        final allowed = file.toLowerCase().endsWith('.png') ? 2 : 4;
+        expect(diffs, lessThanOrEqualTo(allowed),
+            reason: '$file: squares differ from the reference');
         boardsChecked++;
       }
 

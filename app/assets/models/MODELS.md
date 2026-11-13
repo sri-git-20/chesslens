@@ -3,7 +3,6 @@
 Trained 2026-11-13 by `training/` (GitHub Actions workflow `train.yml`). All three models are
 LiteRT/TFLite, **float32 input and output** (weights stored as float16), built-in ops only.
 
-> SMOKE RUN: tiny data and training, numbers are meaningless.
 
 ## Contract (unchanged from docs/ARCHITECTURE.md)
 
