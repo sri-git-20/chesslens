@@ -25,7 +25,6 @@ dependencies:
   device_info_plus: ^13.3.0
   http: ^1.6.0
   crypto: ^3.0.8
-  url_launcher: ^6.3.0
 
 dev_dependencies:
   flutter_test:

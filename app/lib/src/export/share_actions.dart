@@ -8,7 +8,6 @@ import 'package:flutter/services.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import 'pgn.dart';
 
@@ -28,18 +27,15 @@ Future<void> copyToClipboard(BuildContext context, String text, String what) asy
   }
 }
 
+/// Copies the Lichess analysis link. A link launcher plugin is not used: its
+/// Android lint step crashes the release build.
 Future<void> openInLichess(BuildContext context, String fen) async {
   final messenger = ScaffoldMessenger.of(context);
-  final url = lichessAnalysisUrl(fen);
-  var opened = false;
   try {
-    opened = await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
-  } catch (_) {
-    opened = false;
-  }
-  if (!opened) {
-    await Clipboard.setData(ClipboardData(text: url));
-    _say(messenger, 'Could not open the browser. The link was copied.');
+    await Clipboard.setData(ClipboardData(text: lichessAnalysisUrl(fen)));
+    _say(messenger, 'Lichess link copied. Paste it in your browser.');
+  } catch (error) {
+    _say(messenger, 'Could not copy the link. $error');
   }
 }
 
