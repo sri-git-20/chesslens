@@ -21,6 +21,10 @@ const double _scanDpi = 200;
 /// Longest side of a rendered page, in pixels.
 const double _scanMaxSide = 2400;
 
+/// Most pages read in one go. Every page image stays in memory until the
+/// selection screen closes, so this keeps low-memory phones safe.
+const int maxPdfPagesPerScan = 20;
+
 /// Longest side of a thumbnail, in pixels.
 const double _thumbSide = 320;
 
@@ -110,6 +114,11 @@ class _PdfScanScreenState extends ConsumerState<PdfScanScreen> {
   }
 
   void _toggle(int pageNumber) {
+    if (!_selected.contains(pageNumber) &&
+        _selected.length >= maxPdfPagesPerScan) {
+      _showPageLimit();
+      return;
+    }
     setState(() {
       if (!_selected.remove(pageNumber)) _selected.add(pageNumber);
     });
@@ -118,15 +127,31 @@ class _PdfScanScreenState extends ConsumerState<PdfScanScreen> {
   void _selectAll() {
     final document = _document;
     if (document == null) return;
+    final limit = math.min(document.pages.length, maxPdfPagesPerScan);
     setState(() {
-      if (_selected.length == document.pages.length) {
+      if (_selected.length >= limit) {
         _selected.clear();
       } else {
         _selected
           ..clear()
-          ..addAll(List.generate(document.pages.length, (i) => i + 1));
+          ..addAll(List.generate(limit, (i) => i + 1));
       }
     });
+    if (_selected.isNotEmpty && document.pages.length > limit) {
+      _showPageLimit();
+    }
+  }
+
+  void _showPageLimit() {
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        const SnackBar(
+          content: Text(
+            'You can read up to $maxPdfPagesPerScan pages at a time.',
+          ),
+        ),
+      );
   }
 
   Future<BgraInput> _render(PdfPage page) async {
@@ -272,7 +297,7 @@ class _PageGrid extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final total = document.pages.length;
-    final all = selected.length == total;
+    final all = selected.length >= math.min(total, maxPdfPagesPerScan);
     return Column(
       children: [
         Padding(
